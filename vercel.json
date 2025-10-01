@@ -1,17 +1,22 @@
 {
   "version": 2,
-  "buildCommand": "cd frontend && pnpm install && pnpm run build && cd ../backend && pnpm install && pnpm run build",
-  "outputDirectory": "frontend/dist",
-  "functions": {
-    "backend/server.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
-  "routes": [
+  "builds": [
     {
-      "src": "/api/(.*)",
-      "dest": "/backend/server.js"
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
     },
+    {
+      "src": "backend/server.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["backend/prisma/**"]
+      }
+    }
+  ],
+  "routes": [
     {
       "src": "/matches(.*)",
       "dest": "/backend/server.js"
@@ -25,7 +30,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/frontend/index.html"
     }
   ]
 }
