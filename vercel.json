@@ -22,11 +22,16 @@
       "dest": "/backend/server.js"
     },
     {
-      "src": "/health",
+      "src": "/health", 
       "dest": "/backend/server.js"
     },
     {
-      "handle": "filesystem"
+      "src": "/frontend/(.*)",
+      "dest": "/frontend/$1"
+    },
+    {
+      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot))",
+      "dest": "/frontend/$1"
     },
     {
       "src": "/(.*)",
