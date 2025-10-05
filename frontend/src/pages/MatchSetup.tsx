@@ -91,16 +91,16 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onBackToDashboard, onMatchCreat
         </div>
 
         <div className="form-group">
-          <label>Formato da Partida</label>
+          <label>Modo de jogo</label>
           <select id="format" name="format" value={format} onChange={(e) => setFormat(e.target.value)}>
-            <option value="BEST_OF_3">Melhor de 3 sets</option>
-            <option value="BEST_OF_5">Melhor de 5 sets</option>
-            <option value="SINGLE_SET">Set único</option>
-            <option value="PRO_SET">Pro Set (8 games)</option>
-            <option value="MATCH_TIEBREAK">Match Tiebreak (10 pontos)</option>
-            <option value="SHORT_SET">Set curto (4 games)</option>
-            <option value="NO_AD">Sem vantagem</option>
-            <option value="FAST4">Fast4 Tennis</option>
+            <option value="BEST_OF_3">Melhor de 3 sets com vantagem, Set tie-break em todos os sets</option>
+            <option value="BEST_OF_5">Melhor de 5 sets com vantagem, Set tie-break em todos os sets</option>
+            <option value="SINGLE_SET">Set único com vantagem, Set tie-break em 6-6</option>
+            <option value="PRO_SET">Pro Set (8 games) com vantagem, Set tie-break em 8-8</option>
+            <option value="MATCH_TIEBREAK">Match Tiebreak (10 pontos) sem vantagem, Primeiro a 10</option>
+            <option value="SHORT_SET">Set curto (4 games) com vantagem, Sem tie-break</option>
+            <option value="NO_AD">Melhor de 3 sets sem vantagem, Set tie-break em todos os sets</option>
+            <option value="FAST4">Fast4 Tennis sem vantagem, Set tie-break em 3-3</option>
           </select>
         </div>
 

@@ -8,7 +8,7 @@ const getApiUrl = (): string => {
   }
   
   // Se estamos no desenvolvimento (local ou rede)
-  return 'http://192.168.15.2:4001'; // Backend sempre na rede local
+  return 'http://localhost:4001'; // Backend sempre na rede local
 };
 
 export const API_URL = getApiUrl();

@@ -110,4 +110,27 @@ export class TennisConfigFactory {
       default: return format;
     }
   }
+
+  static getFormatDetailedName(format: TennisFormat): string {
+    switch (format) {
+      case 'BEST_OF_3': 
+        return 'Melhor de 3 sets com vantagem, Set tie-break em todos os sets';
+      case 'BEST_OF_5': 
+        return 'Melhor de 5 sets com vantagem, Set tie-break em todos os sets';
+      case 'SINGLE_SET': 
+        return 'Set único com vantagem, Set tie-break em 6-6';
+      case 'PRO_SET': 
+        return 'Pro Set (8 games) com vantagem, Set tie-break em 8-8';
+      case 'MATCH_TIEBREAK': 
+        return 'Match Tiebreak (10 pontos) sem vantagem, Primeiro a 10';
+      case 'SHORT_SET': 
+        return 'Set curto (4 games) com vantagem, Sem tie-break';
+      case 'NO_AD': 
+        return 'Melhor de 3 sets sem vantagem, Set tie-break em todos os sets';
+      case 'FAST4': 
+        return 'Fast4 Tennis sem vantagem, Set tie-break em 3-3';
+      default: 
+        return format;
+    }
+  }
 }

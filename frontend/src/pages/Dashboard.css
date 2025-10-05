@@ -73,19 +73,39 @@
   font-size: 1.1rem;
 }
 
-.continue-button {
-  background-color: #2196F3;
+.continue-button, .start-button {
   color: white;
   border: none;
-  padding: 6px 12px;
+  padding: 0.5rem 1rem;
   border-radius: 4px;
-  font-size: 0.85rem;
   cursor: pointer;
-  transition: background-color 0.2s;
+  font-size: 0.9rem;
+}
+
+.continue-button {
+  background-color: #2196F3;
 }
 
 .continue-button:hover {
   background-color: #1976D2;
+}
+
+.start-button {
+  background-color: #4CAF50;
+}
+
+.start-button:hover {
+  background-color: #45a049;
+}
+
+/* Tornar cards clicáveis */
+.match-card {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.match-card:hover {
+  background-color: #444;
 }
 
 .match-card-status {

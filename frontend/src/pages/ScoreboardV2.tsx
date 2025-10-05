@@ -41,7 +41,7 @@ const SetupModal: React.FC<SetupModalProps> = ({ isOpen, players, format, onConf
     <div className="setup-modal-overlay">
       <div className="setup-modal">
         <h3>Configuração da Partida</h3>
-        <p><strong>Formato:</strong> {TennisConfigFactory.getFormatDisplayName(format as TennisFormat)}</p>
+        <p><strong>Modo de jogo:</strong> {TennisConfigFactory.getFormatDisplayName(format as TennisFormat)}</p>
         
         <div className="server-selection">
           <h4>Quem saca primeiro?</h4>
@@ -204,12 +204,33 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
   if (!matchState) return null;
 
   const setsHistory = formatSetsHistory();
+  
+  // Obter informações do saque e lado da quadra
+  const serverInfo = scoringSystem?.getServerInfo() || {
+    server: matchState.server,
+    side: 'right',
+    totalPointsPlayed: 0,
+    isOddPoint: false
+  };
 
   return (
     <div className="scoreboard-v2">
       <div className="scoreboard-header">
         <h3>{match.sportType} - {TennisConfigFactory.getFormatDisplayName((match.format as TennisFormat) || 'BEST_OF_3')}</h3>
         <button onClick={onEndMatch} className="end-match-button">✕</button>
+      </div>
+
+      {/* Indicador de lado da quadra */}
+      <div className="court-side-indicator">
+        <div className="court-info">
+          <span className="points-info">
+            Pontos disputados: {serverInfo.totalPointsPlayed} 
+            ({serverInfo.isOddPoint ? 'ímpar' : 'par'})
+          </span>
+          <span className={`side-indicator ${serverInfo.side}`}>
+            Lado: {serverInfo.side === 'left' ? '← Esquerda' : 'Direita →'}
+          </span>
+        </div>
       </div>
 
       {/* Área principal de pontuação */}

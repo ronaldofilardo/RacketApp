@@ -20,12 +20,13 @@ interface DashboardMatch {
 interface DashboardProps {
   onNewMatchClick: () => void;
   onContinueMatch?: (match: DashboardMatch) => void;
+  onStartMatch?: (match: DashboardMatch) => void;
   matches: DashboardMatch[];
   loading: boolean;
   error: string | null;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch, matches, loading, error }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch, onStartMatch, matches, loading, error }) => {
   const statusMap: Record<string, string> = {
     NOT_STARTED: 'Não Iniciada',
     IN_PROGRESS: 'Em Andamento',
@@ -65,15 +66,35 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch,
           }
 
           return (
-            <div key={match.id} className="match-card">
+            <div key={match.id} className="match-card" onClick={() => {
+              if (match.status === 'NOT_STARTED' && onStartMatch) {
+                onStartMatch(match);
+              } else if (match.status === 'IN_PROGRESS' && onContinueMatch) {
+                onContinueMatch(match);
+              }
+            }}>
               <div className="match-card-header">
                 <div className="match-card-sport">{sportAndFormat}</div>
                 {match.status === 'IN_PROGRESS' && onContinueMatch && (
                   <button 
                     className="continue-button"
-                    onClick={() => onContinueMatch(match)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onContinueMatch(match);
+                    }}
                   >
                     Continuar
+                  </button>
+                )}
+                {match.status === 'NOT_STARTED' && onStartMatch && (
+                  <button 
+                    className="start-button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onStartMatch(match);
+                    }}
+                  >
+                    Iniciar
                   </button>
                 )}
               </div>

@@ -105,6 +105,27 @@ function App() {
     setCurrentPage('SCOREBOARD');
   };
 
+  const startExistingMatch = (matchData: DashboardMatch) => {
+    // Converter DashboardMatch para MatchData (mesmo que continueMatch)
+    const convertedMatch: MatchData = {
+      id: matchData.id.toString(),
+      sportType: matchData.sportType || matchData.sport || 'TENNIS',
+      format: matchData.format,
+      players: typeof matchData.players === 'string' ? undefined : matchData.players,
+      status: matchData.status,
+      createdAt: matchData.createdAt,
+      score: matchData.score,
+      completedSets: matchData.completedSets?.map(s => ({
+        setNumber: s.setNumber,
+        games: s.games,
+        winner: s.winner as 'PLAYER_1' | 'PLAYER_2'
+      })),
+    };
+    
+    setActiveMatch(convertedMatch);
+    setCurrentPage('SCOREBOARD');
+  };
+
   const finishMatch = async (matchId: string, score: string, winner?: string, completedSets?: CompletedSet[]) => {
     // Otimista
     setMatches(prev => prev.map(m => m.id === matchId ? { ...m, status: 'FINISHED', score, winner, completedSets } : m));
@@ -141,6 +162,7 @@ function App() {
         return <Dashboard 
           onNewMatchClick={navigateToMatchSetup} 
           onContinueMatch={continueMatch}
+          onStartMatch={startExistingMatch}
           matches={matches} 
           loading={loadingMatches}
           error={error}

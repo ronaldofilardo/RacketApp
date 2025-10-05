@@ -365,4 +365,75 @@ export class TennisScoring {
     
     return newState;
   }
+
+  // Converte pontos do placar (GamePoint) para número real de pontos disputados
+  private convertScoreToActualPoints(score: GamePoint): number {
+    switch (score) {
+      case '0': return 0;
+      case '15': return 1;
+      case '30': return 2;
+      case '40': return 3;
+      case 'AD': return 4; // Na vantagem, pelo menos 4 pontos foram disputados
+      default: return 0;
+    }
+  }
+
+  // Calcula o total de pontos disputados no game atual
+  private getTotalPointsPlayed(): number {
+    if (this.state.currentGame.isTiebreak) {
+      // No tie-break, soma simples funciona porque cada ponto vale 1
+      const p1Points = this.state.currentGame.points.PLAYER_1 as number;
+      const p2Points = this.state.currentGame.points.PLAYER_2 as number;
+      return p1Points + p2Points;
+    } else {
+      // Em games regulares, converte os valores de placar para pontos reais
+      const p1Score = this.state.currentGame.points.PLAYER_1 as GamePoint;
+      const p2Score = this.state.currentGame.points.PLAYER_2 as GamePoint;
+      
+      const p1ActualPoints = this.convertScoreToActualPoints(p1Score);
+      const p2ActualPoints = this.convertScoreToActualPoints(p2Score);
+      
+      // Casos especiais para vantagem
+      if (p1Score === 'AD' || p2Score === 'AD') {
+        // Se há vantagem, sabemos que foram disputados pelo menos 7 pontos (6 para chegar no deuce + 1 para vantagem)
+        // Podemos ser mais precisos contando quantas vantagens já houve
+        const basePoints = 6; // Mínimo para chegar ao deuce (40-40)
+        const extraPoints = Math.max(p1ActualPoints - 3, 0) + Math.max(p2ActualPoints - 3, 0);
+        return basePoints + extraPoints;
+      }
+      
+      return p1ActualPoints + p2ActualPoints;
+    }
+  }
+
+  // Determina o lado da quadra baseado no número de pontos disputados
+  public getServingSide(): 'left' | 'right' {
+    const totalPoints = this.getTotalPointsPlayed();
+    
+    // Regra do tênis: ímpar → esquerda, par → direita
+    // Exemplos:
+    // 0 pontos (início) → par → direita
+    // 1 ponto → ímpar → esquerda  
+    // 2 pontos → par → direita
+    // etc.
+    return totalPoints % 2 === 0 ? 'right' : 'left';
+  }
+
+  // Método público para obter informações completas sobre o saque
+  public getServerInfo(): {
+    server: Player;
+    side: 'left' | 'right';
+    totalPointsPlayed: number;
+    isOddPoint: boolean;
+  } {
+    const totalPoints = this.getTotalPointsPlayed();
+    const isOdd = totalPoints % 2 === 1;
+    
+    return {
+      server: this.state.server,
+      side: this.getServingSide(),
+      totalPointsPlayed: totalPoints,
+      isOddPoint: isOdd
+    };
+  }
 }
