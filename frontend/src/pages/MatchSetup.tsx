@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import RulesGuide from '../components/RulesGuide';
-import type { TennisFormat } from '../core/scoring/types';
 import { API_URL } from '../config/api';
 import './MatchSetup.css';
 
@@ -103,9 +101,6 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onBackToDashboard, onMatchCreat
             <option value="FAST4">Fast4 Tennis sem vantagem, Set tie-break em 3-3</option>
           </select>
         </div>
-
-        {/* Quadro de Regras e Estatísticas */}
-        <RulesGuide format={format as TennisFormat} />
 
         <div className="form-actions">
           <button type="submit" className="start-match-button">Iniciar Partida</button>

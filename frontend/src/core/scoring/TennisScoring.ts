@@ -10,10 +10,12 @@ export class TennisScoring {
   private matchId: string | null = null;
   private syncEnabled: boolean = false;
   private tiebreakPointsPlayed: number = 0; // Contador para troca de sacador no tie-break
+  private history: MatchState[] = []; // Histórico de estados para undo
 
   constructor(server: Player, format: TennisFormat = 'BEST_OF_3') {
     this.config = TennisConfigFactory.getConfig(format);
     this.state = this.getInitialState(server);
+    this.history = []; // Inicializar histórico vazio
   }
 
   // Configurar sincronização com backend
@@ -64,11 +66,48 @@ export class TennisScoring {
       config: this.config, // Manter config atual por segurança
     };
 
+    // Limpar histórico ao carregar um estado salvo
+    this.history = [];
     console.log('✅ Estado restaurado:', this.state);
+  }
+
+  // Salvar estado atual no histórico antes de fazer mudanças
+  private saveToHistory(): void {
+    const stateCopy = JSON.parse(JSON.stringify(this.state));
+    this.history.push(stateCopy);
+    // Manter apenas os últimos 50 estados para evitar uso excessivo de memória
+    if (this.history.length > 50) {
+      this.history.shift();
+    }
+  }
+
+  // Desfazer último ponto (undo)
+  public undoLastPoint(): MatchState | null {
+    if (this.history.length === 0) {
+      console.log('❌ Nenhum ponto para desfazer');
+      return null;
+    }
+
+    const previousState = this.history.pop();
+    if (previousState) {
+      this.state = previousState;
+      console.log('↩️ Ponto desfeito, estado restaurado');
+      return this.getState();
+    }
+    
+    return null;
+  }
+
+  // Verificar se é possível desfazer
+  public canUndo(): boolean {
+    return this.history.length > 0;
   }
 
   public addPoint(player: Player): MatchState {
     if (this.state.isFinished) return this.getState();
+
+    // Salvar estado atual antes de modificar
+    this.saveToHistory();
 
     // Se é tiebreak ou match tiebreak, usa lógica numérica
     if (this.state.currentGame.isTiebreak || this.state.currentGame.isMatchTiebreak) {
@@ -218,7 +257,21 @@ export class TennisScoring {
   }
 
   private winSet(player: Player) {
-    // Captura dados do set que acabou antes de alterar counters
+    // Capturar resultado do tie-break se aplicável ANTES de alterar qualquer coisa
+    let tiebreakScore: {PLAYER_1: number, PLAYER_2: number} | undefined = undefined;
+    if (this.state.currentGame.isTiebreak && !this.state.currentGame.isMatchTiebreak) {
+      tiebreakScore = {
+        PLAYER_1: this.state.currentGame.points.PLAYER_1 as number,
+        PLAYER_2: this.state.currentGame.points.PLAYER_2 as number
+      };
+    }
+
+    // Se foi tie-break, incrementar o game do vencedor para refletir 7-6 ou 6-7
+    if (this.state.currentGame.isTiebreak && !this.state.currentGame.isMatchTiebreak) {
+      this.state.currentSetState.games[player]++;
+    }
+
+    // Capturar dados do set que acabou APÓS incrementar o game (se tie-break)
     const finishedSetNumber = this.state.currentSet;
     const gamesSnapshot = { ...this.state.currentSetState.games };
 
@@ -232,6 +285,7 @@ export class TennisScoring {
       setNumber: finishedSetNumber,
       games: gamesSnapshot,
       winner: player,
+      tiebreakScore: tiebreakScore, // Adicionar score do tie-break
     });
 
     // Verifica se ganhou a partida
@@ -360,6 +414,18 @@ export class TennisScoring {
     
     // Sincronizar automaticamente se habilitado
     if (this.syncEnabled) {
+      await this.syncState();
+    }
+    
+    return newState;
+  }
+
+  // Undo com sincronização automática
+  public async undoLastPointWithSync(): Promise<MatchState | null> {
+    const newState = this.undoLastPoint();
+    
+    // Sincronizar automaticamente se habilitado
+    if (this.syncEnabled && newState) {
       await this.syncState();
     }
     

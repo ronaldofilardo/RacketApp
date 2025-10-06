@@ -57,13 +57,52 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch,
               : `${match.players.p1} vs. ${match.players.p2}`
           ) : '—';
           const statusDisplay = match.status ? (statusMap[match.status] || match.status) : 'Não Iniciada';
-          // Monta string de parciais detalhadas se houver completedSets
-          let partials: string | null = null;
-          if (match.completedSets && match.completedSets.length > 0) {
-            partials = match.completedSets
-              .map((s) => `${s.games.PLAYER_1}-${s.games.PLAYER_2}`)
-              .join(', ');
-          }
+          // Formatar resultado detalhado das parciais
+          const formatMatchResult = (completedSets: Array<{setNumber: number, games: {PLAYER_1: number, PLAYER_2: number}, winner: string, tiebreakScore?: {PLAYER_1: number, PLAYER_2: number}}>): string => {
+            if (!completedSets || completedSets.length === 0) return '';
+            
+            const formattedSets = completedSets.map((set) => {
+              const p1Games = set.games.PLAYER_1;
+              const p2Games = set.games.PLAYER_2;
+              
+              // Detectar tie-break (7-6, 6-7, ou 6-6 com tiebreakScore)
+              const isTiebreak = (p1Games === 7 && p2Games === 6) || 
+                                (p1Games === 6 && p2Games === 7) || 
+                                (p1Games === 6 && p2Games === 6 && set.tiebreakScore);
+              
+              if (set.tiebreakScore) {
+                // Usar resultado real do tie-break
+                const loserTieScore = set.winner === 'PLAYER_1' ? set.tiebreakScore.PLAYER_2 : set.tiebreakScore.PLAYER_1;
+                
+                // Para dados antigos 6-6, corrigir para mostrar 7-6 ou 6-7
+                if (p1Games === 6 && p2Games === 6) {
+                  const correctedP1 = set.winner === 'PLAYER_1' ? 7 : 6;
+                  const correctedP2 = set.winner === 'PLAYER_2' ? 7 : 6;
+                  return `${correctedP1}/${correctedP2}(${loserTieScore})`;
+                } else {
+                  return `${p1Games}/${p2Games}(${loserTieScore})`;
+                }
+              } else if (isTiebreak) {
+                // Fallback para tie-breaks sem score detalhado
+                const tieScore = p1Games === 7 ? '7' : '5'; // Placeholder estimado
+                return `${p1Games}/${p2Games}(${tieScore})`;
+              }
+              
+              return `${p1Games}/${p2Games}`;
+            });
+            
+            // Juntar com vírgulas e "e" antes do último
+            if (formattedSets.length === 1) {
+              return formattedSets[0];
+            } else if (formattedSets.length === 2) {
+              return `${formattedSets[0]} e ${formattedSets[1]}`;
+            } else {
+              const lastSet = formattedSets.pop();
+              return `${formattedSets.join(', ')} e ${lastSet}`;
+            }
+          };
+
+          const partials = formatMatchResult(match.completedSets || []);
 
           return (
             <div key={match.id} className="match-card" onClick={() => {

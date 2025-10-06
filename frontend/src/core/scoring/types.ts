@@ -48,5 +48,5 @@ export interface MatchState {
   winner?: Player;
   isFinished: boolean;
   config: TennisConfig;
-  completedSets?: Array<{ setNumber: number; games: Record<Player, number>; winner: Player }>;
+  completedSets?: Array<{ setNumber: number; games: Record<Player, number>; winner: Player; tiebreakScore?: Record<Player, number> }>;
 }

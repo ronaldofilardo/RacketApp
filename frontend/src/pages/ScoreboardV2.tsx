@@ -149,6 +149,28 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
     }
   };
 
+  const handleUndo = async () => {
+    if (!scoringSystem || !matchState) return;
+
+    try {
+      // Usar método com sincronização automática
+      const newState = await scoringSystem.undoLastPointWithSync();
+      if (newState) {
+        setMatchState(newState);
+        console.log('↩️ Último ponto desfeito');
+      } else {
+        console.log('❌ Nenhum ponto para desfazer');
+      }
+    } catch (error) {
+      console.error('Erro ao desfazer ponto:', error);
+      // Fallback: usar método normal se sync falhar
+      const newState = scoringSystem.undoLastPoint();
+      if (newState) {
+        setMatchState(newState);
+      }
+    }
+  };
+
   // Função para formatar histórico de sets
   const formatSetsHistory = (): string => {
     if (!matchState?.completedSets) return '';
@@ -204,33 +226,12 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
   if (!matchState) return null;
 
   const setsHistory = formatSetsHistory();
-  
-  // Obter informações do saque e lado da quadra
-  const serverInfo = scoringSystem?.getServerInfo() || {
-    server: matchState.server,
-    side: 'right',
-    totalPointsPlayed: 0,
-    isOddPoint: false
-  };
 
   return (
     <div className="scoreboard-v2">
       <div className="scoreboard-header">
-        <h3>{match.sportType} - {TennisConfigFactory.getFormatDisplayName((match.format as TennisFormat) || 'BEST_OF_3')}</h3>
+        <h3>{match.sportType} - {TennisConfigFactory.getFormatDetailedName((match.format as TennisFormat) || 'BEST_OF_3')}</h3>
         <button onClick={onEndMatch} className="end-match-button">✕</button>
-      </div>
-
-      {/* Indicador de lado da quadra */}
-      <div className="court-side-indicator">
-        <div className="court-info">
-          <span className="points-info">
-            Pontos disputados: {serverInfo.totalPointsPlayed} 
-            ({serverInfo.isOddPoint ? 'ímpar' : 'par'})
-          </span>
-          <span className={`side-indicator ${serverInfo.side}`}>
-            Lado: {serverInfo.side === 'left' ? '← Esquerda' : 'Direita →'}
-          </span>
-        </div>
       </div>
 
       {/* Área principal de pontuação */}
@@ -305,6 +306,18 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
           disabled={matchState.isFinished}
         >
           + Ponto {players.p2}
+        </button>
+      </div>
+
+      {/* Botão de correção */}
+      <div className="correction-section">
+        <button 
+          className="undo-button"
+          onClick={handleUndo}
+          disabled={matchState.isFinished || !scoringSystem?.canUndo()}
+          title="Desfazer último ponto marcado"
+        >
+          ↩️ Correção (Undo)
         </button>
       </div>
     </div>
