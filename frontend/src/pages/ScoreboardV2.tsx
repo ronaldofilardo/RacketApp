@@ -18,6 +18,7 @@ interface CompletedSet {
   setNumber: number; 
   games: { PLAYER_1: number; PLAYER_2: number }; 
   winner: 'PLAYER_1' | 'PLAYER_2';
+  tiebreakScore?: { PLAYER_1: number; PLAYER_2: number };
 }
 
 interface ScoreboardV2Props {
@@ -179,10 +180,13 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
       const p1Games = set.games.PLAYER_1;
       const p2Games = set.games.PLAYER_2;
       
-      // Detecta tiebreak (7-6 ou similar)
-      if ((p1Games === 7 && p2Games === 6) || (p1Games === 6 && p2Games === 7)) {
-        // Por simplicidade, não mostramos detalhes do tiebreak ainda
-        return `${p1Games}-${p2Games}`;
+      // Se houve tiebreak, exibe o resultado do tiebreak
+      if (set.tiebreakScore) {
+        const tieLoser = set.winner === 'PLAYER_1' ? 'PLAYER_2' : 'PLAYER_1';
+        const loserScore = set.tiebreakScore[tieLoser];
+        
+        // Exibe como "7-6(9)" onde 9 é o placar do perdedor do tiebreak
+        return `${p1Games}-${p2Games}(${loserScore})`;
       }
       
       return `${p1Games}-${p2Games}`;
