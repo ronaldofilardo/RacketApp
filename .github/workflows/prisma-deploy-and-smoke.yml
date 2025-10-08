@@ -1,0 +1,33 @@
+name: Migrate and Smoke Test (on push to master)
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  migrate-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies (root)
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Prisma Migrate Deploy (backend)
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm exec prisma migrate deploy --schema prisma/schema.postgres.prisma
+
+      - name: Run smoke tests
+        working-directory: backend
+        env:
+          SMOKE_API_URL: ${{ secrets.SMOKE_API_URL }}
+        run: |
+          node ./scripts/smoke_test.mjs
