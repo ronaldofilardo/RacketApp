@@ -31,3 +31,10 @@ jobs:
           SMOKE_API_URL: ${{ secrets.SMOKE_API_URL }}
         run: |
           node ./scripts/smoke_test.mjs
+
+      - name: Run E2E tests (create/start/finish)
+        working-directory: backend
+        env:
+          SMOKE_API_URL: ${{ secrets.SMOKE_API_URL }}
+        run: |
+          node ./scripts/e2e_test.mjs
