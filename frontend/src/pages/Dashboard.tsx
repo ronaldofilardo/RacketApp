@@ -32,7 +32,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch,
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<DashboardMatch | null>(null);
   const [matchStats, setMatchStats] = useState<any>(null);
-  const [loadingStats, setLoadingStats] = useState(false);
   
   const statusMap: Record<string, string> = {
     NOT_STARTED: 'Não Iniciada',
@@ -42,7 +41,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch,
 
   // Função para buscar estatísticas da partida
   const fetchMatchStats = async (matchId: string | number) => {
-    setLoadingStats(true);
     try {
       const response = await fetch(`${API_URL}/matches/${matchId}/stats`);
       if (response.ok) {
@@ -94,8 +92,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch,
     } catch (error) {
       console.error('Erro ao buscar estatísticas:', error);
       setMatchStats(null);
-    } finally {
-      setLoadingStats(false);
     }
   };
   return (
