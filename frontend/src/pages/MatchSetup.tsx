@@ -16,15 +16,18 @@ interface CreatedMatchData {
 interface MatchSetupProps {
   onMatchCreated: (matchData: CreatedMatchData) => void;
   onBackToDashboard: () => void;
+  players?: Array<{ id: string; name: string; email?: string }>; // accept PlayerMock shape
 }
 
 
 
-const MatchSetup: React.FC<MatchSetupProps> = ({ onBackToDashboard, onMatchCreated }) => {
+const MatchSetup: React.FC<MatchSetupProps> = ({ onBackToDashboard, onMatchCreated, players }) => {
   const [sport, setSport] = useState('TENNIS');
   const [format, setFormat] = useState('BEST_OF_3');
+  const [nickname, setNickname] = useState('');
   const [player1, setPlayer1] = useState('');
   const [player2, setPlayer2] = useState('');
+  const [visibleTo, setVisibleTo] = useState<'both' | string>('both');
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault(); // Impede o recarregamento da página
@@ -35,10 +38,9 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onBackToDashboard, onMatchCreat
       const response = await axios.post(`${API_URL}/matches`, {
         sportType: sport,
         format: format,
-        players: { 
-          p1: player1 || 'Jogador 1', 
-          p2: player2 || 'Jogador 2' 
-        }
+        nickname: nickname || null,
+        players: { p1: player1 || 'Jogador 1', p2: player2 || 'Jogador 2' },
+        visibleTo: visibleTo || 'both',
       });
 
       console.log('Partida criada com sucesso!', response.data);
@@ -72,19 +74,35 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onBackToDashboard, onMatchCreat
         <div className="form-group">
           <label>Jogadores</label>
           <div className="player-inputs">
-            <input 
-              type="text" 
-              placeholder="Jogador 1 (ou Dupla 1)" 
-              value={player1}
-              onChange={(e) => setPlayer1(e.target.value)}
-            />
-            <span>vs</span>
-            <input 
-              type="text" 
-              placeholder="Jogador 2 (ou Dupla 2)" 
-              value={player2}
-              onChange={(e) => setPlayer2(e.target.value)}
-            />
+            {players && players.length > 0 ? (
+              <>
+                <select value={player1} onChange={e => setPlayer1(e.target.value)}>
+                  <option value="">Selecione Jogador 1</option>
+                  {players.map((p: { id: string; name: string; email?: string }) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+                <span>vs</span>
+                <select value={player2} onChange={e => setPlayer2(e.target.value)}>
+                  <option value="">Selecione Jogador 2</option>
+                  {players.map((p: { id: string; name: string; email?: string }) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </>
+            ) : (
+              <>
+                <input 
+                  type="text" 
+                  placeholder="Jogador 1 (ou Dupla 1)" 
+                  value={player1}
+                  onChange={(e) => setPlayer1(e.target.value)}
+                />
+                <span>vs</span>
+                <input 
+                  type="text" 
+                  placeholder="Jogador 2 (ou Dupla 2)" 
+                  value={player2}
+                  onChange={(e) => setPlayer2(e.target.value)}
+                />
+              </>
+            )}
           </div>
         </div>
 
@@ -105,8 +123,26 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onBackToDashboard, onMatchCreat
           </select>
         </div>
 
+        <div className="form-group">
+          <label>Apelido da partida (opcional)</label>
+          <input
+            type="text"
+            placeholder="Ex: Desafio Amigos"
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+          />
+        </div>
+
         <div className="form-actions">
-          <button type="submit" className="start-match-button">Iniciar Partida</button>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <label style={{ fontSize: 12 }}>Visível para</label>
+            <select value={visibleTo} onChange={e => setVisibleTo(e.target.value)}>
+              <option value="both">Ambos</option>
+              <option value={player1} disabled={!player1}>Jogador 1</option>
+              <option value={player2} disabled={!player2}>Jogador 2</option>
+            </select>
+            <button type="submit" className="start-match-button">Iniciar Partida</button>
+          </div>
         </div>
       </form>
     </div>

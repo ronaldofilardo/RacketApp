@@ -2,7 +2,7 @@ import React from 'react';
 import type { PointDetails } from '../core/scoring/types';
 import './MatchStatsModal.css';
 
-interface PlayerStats {
+export interface PlayerStats {
   // Pontos
   pointsWon: number;
   
@@ -44,14 +44,14 @@ interface PlayerStats {
   dominanceRatio: number;
 }
 
-interface MatchStats {
+export interface MatchStats {
   avgRallyLength: number;
   longestRally: number;
   shortestRally: number;
   totalRallies: number;
 }
 
-interface MatchStatsData {
+export interface MatchStatsData {
   totalPoints: number;
   player1: PlayerStats;
   player2: PlayerStats;
@@ -65,6 +65,7 @@ interface MatchStatsModalProps {
   matchId: string;
   playerNames: { p1: string; p2: string };
   stats: MatchStatsData | null;
+  nickname?: string | null;
 }
 
 const MatchStatsModal: React.FC<MatchStatsModalProps> = ({
@@ -73,10 +74,26 @@ const MatchStatsModal: React.FC<MatchStatsModalProps> = ({
   matchId,
   playerNames,
   stats
+  , nickname
 }) => {
 
   // Fallback defensivo para evitar crash se player1/player2 vierem undefined
-  if (!isOpen || !stats) return null;
+  if (!isOpen) return null;
+  if (!stats) {
+    return (
+      <div className="match-stats-modal-overlay" onClick={onClose}>
+        <div className="match-stats-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h2>📊 Comparativo de Estatísticas</h2>
+            <button className="close-button" onClick={onClose}>×</button>
+          </div>
+          <div style={{ padding: 24 }}>
+            <p>Carregando estatísticas...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
   const safeStats = {
     player1: stats.player1 ?? ({} as PlayerStats),
     player2: stats.player2 ?? ({} as PlayerStats),
@@ -138,6 +155,7 @@ const MatchStatsModal: React.FC<MatchStatsModalProps> = ({
 
         <div className="modal-content">
           <div className="match-info">
+            {nickname ? <div className="match-nickname">{nickname}</div> : null}
             <div className="players-header">
               <div className="player-header">{playerNames.p1}</div>
               <div className="vs-divider">vs</div>

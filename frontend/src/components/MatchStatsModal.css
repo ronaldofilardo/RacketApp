@@ -317,6 +317,13 @@
   border: 1px solid #e2e8f0;
 }
 
+.match-nickname {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
 .match-info h3 {
   margin: 0 0 8px 0;
   color: #1e293b;

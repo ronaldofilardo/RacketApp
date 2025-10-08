@@ -58,6 +58,18 @@ export interface MatchState {
   isFinished: boolean;
   config: TennisConfig;
   completedSets?: Array<{ setNumber: number; games: Record<Player, number>; winner: Player; tiebreakScore?: Record<Player, number> }>;
+  // Optional metadata managed by the UI/backend
+  startedAt?: string; // ISO timestamp
+  endedAt?: string; // ISO timestamp
+  durationSeconds?: number; // total duration in seconds
+  viewLog?: Array<{
+    viewedAt: string;
+    startedAt?: string;
+    endedAt?: string;
+    durationSeconds?: number;
+    // allow extra fields if needed
+    [key: string]: unknown;
+  }>; // entries added when a card/view is opened
 }
 
 // === SISTEMA DE ANÁLISE DETALHADA DE PONTOS ===

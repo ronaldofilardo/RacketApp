@@ -96,13 +96,11 @@ public
 # Prisma
 /backend/prisma/dev.db
 /backend/prisma/dev.db-journal
-/backend/prisma/migrations/
 
 # Prisma local DB and backups
 /backend/prisma/prisma/dev.db
 /backend/prisma/prisma/dev.db-journal
 /backend/prisma/prisma/dev.db.bak
-/backend/prisma/migrations/
 
 # Prisma client artifacts
 **/node_modules/**/.prisma/

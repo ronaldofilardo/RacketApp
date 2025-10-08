@@ -75,6 +75,9 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
   const [isSetupOpen, setIsSetupOpen] = useState(true);
   const [scoringSystem, setScoringSystem] = useState<TennisScoring | null>(null);
   const [matchState, setMatchState] = useState<MatchState | null>(null);
+  const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [endedAt, setEndedAt] = useState<string | null>(null);
+  const [elapsed, setElapsed] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   
   // Estados para o sistema de análise detalhada
@@ -103,6 +106,9 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
               
               setScoringSystem(system);
               setMatchState(data.matchState);
+              // carregar timestamps se existirem
+              setStartedAt(data.matchState.startedAt || null);
+              setEndedAt(data.matchState.endedAt || null);
               setIsSetupOpen(false); // Pular setup
             }
           }
@@ -116,6 +122,25 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
     loadExistingState();
   }, [match.id, match.status]);
 
+  // Cronômetro: atualiza elapsed quando startedAt estiver definido e partida não finalizada
+  React.useEffect(() => {
+    let timer: number | null = null;
+    if (startedAt && !endedAt) {
+      const start = new Date(startedAt).getTime();
+      setElapsed(Math.floor((Date.now() - start) / 1000));
+      timer = window.setInterval(() => {
+        setElapsed(Math.floor((Date.now() - start) / 1000));
+      }, 1000);
+    } else if (startedAt && endedAt) {
+      // partida finalizada: calcular elapsed uma vez
+      const start = new Date(startedAt).getTime();
+      const end = new Date(endedAt).getTime();
+      setElapsed(Math.max(0, Math.floor((end - start) / 1000)));
+    }
+
+    return () => { if (timer !== null) { window.clearInterval(timer); } };
+  }, [startedAt, endedAt]);
+
   const handleSetupConfirm = (firstServer: Player) => {
     const system = new TennisScoring(firstServer, (match.format as TennisFormat) || 'BEST_OF_3');
     
@@ -123,7 +148,18 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
     system.enableSync(match.id);
     
     setScoringSystem(system);
-    setMatchState(system.getState());
+    const initialState = system.getState();
+    // marcar startedAt imediatamente
+    const now = new Date().toISOString();
+    initialState.startedAt = now;
+    setStartedAt(now);
+    setMatchState(initialState);
+    // Persistir startedAt no backend
+    fetch(`${API_URL}/matches/${match.id}/state`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ matchState: initialState }),
+    }).catch((e) => console.warn('Falha ao persistir startedAt', e));
     setIsSetupOpen(false);
   };
 
@@ -156,6 +192,20 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
         
         // Desabilitar sync antes de finalizar (evita chamadas desnecessárias)
         scoringSystem.disableSync();
+        // marcar endedAt e persistir
+        const endIso = new Date().toISOString();
+        newState.endedAt = endIso;
+        setEndedAt(endIso);
+        // calcular total e persistir via PATCH
+        try {
+          await fetch(`${API_URL}/matches/${match.id}/state`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ matchState: newState }),
+          });
+        } catch (e) {
+          console.warn('Falha ao persistir endedAt', e);
+        }
         
         setTimeout(() => {
           alert(`Partida finalizada! Vencedor: ${winner === 'PLAYER_1' ? players.p1 : players.p2}`);
@@ -267,7 +317,13 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
   return (
     <div className="scoreboard-v2">
       <div className="scoreboard-header">
-        <h3>{match.sportType} - {TennisConfigFactory.getFormatDetailedName((match.format as TennisFormat) || 'BEST_OF_3')}</h3>
+        <div>
+          <h3>{match.sportType} - {TennisConfigFactory.getFormatDetailedName((match.format as TennisFormat) || 'BEST_OF_3')}</h3>
+          <div className="match-timestamps">
+            {startedAt ? <span className="match-start">Início: {new Date(startedAt).toLocaleString()}</span> : null}
+            {startedAt ? <span className="match-elapsed">Tempo: {Math.floor(elapsed/3600).toString().padStart(2,'0')}:{Math.floor((elapsed%3600)/60).toString().padStart(2,'0')}:{(elapsed%60).toString().padStart(2,'0')}</span> : null}
+          </div>
+        </div>
         <button onClick={onEndMatch} className="end-match-button">✕</button>
       </div>
 

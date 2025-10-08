@@ -48,6 +48,58 @@ export default async function handler(req, res) {
       });
     }
 
+    // Get visible matches for a given user (server-side filter)
+    if (pathname === "/matches/visible" && method === "GET") {
+      console.log("📋 Buscando partidas visíveis (server-side)...");
+      const fullUrl = new URL(url, "http://localhost");
+      const email = fullUrl.searchParams.get("email") || null;
+      const role = fullUrl.searchParams.get("role") || "player";
+
+      const matches = await prisma.match.findMany({
+        orderBy: { createdAt: "desc" },
+      });
+
+      const responseMatches = matches.map((match) => {
+        const parsedState = match.matchState
+          ? JSON.parse(match.matchState)
+          : null;
+        const visibleTo = parsedState?.visibleTo || "both";
+        return {
+          id: match.id,
+          sportType: match.sportType,
+          format: match.format,
+          players: { p1: match.playerP1, p2: match.playerP2 },
+          status: match.status,
+          score: match.score,
+          winner: match.winner,
+          completedSets: JSON.parse(match.completedSets || "[]"),
+          createdAt: match.createdAt.toISOString(),
+          matchState: parsedState,
+          visibleTo,
+        };
+      });
+
+      // If annotator, return all
+      if (role === "annotator") {
+        console.log("🔑 Annotator request - returning all matches");
+        return res.json(responseMatches);
+      }
+
+      // Otherwise filter by visibleTo (email or local-part) or 'both'
+      const emailLocal = email ? email.replace(/@.*/, "") : null;
+      const filtered = responseMatches.filter((m) => {
+        const v = m.visibleTo || "both";
+        if (v === "both") return true;
+        if (!email) return false;
+        return v === email || (emailLocal && v === emailLocal);
+      });
+
+      console.log(
+        `✅ ${filtered.length} partidas visíveis para ${email || "anon"}`
+      );
+      return res.json(filtered);
+    }
+
     // Get all matches
     if (pathname === "/matches" && method === "GET") {
       console.log("📋 Buscando todas as partidas...");
@@ -56,17 +108,25 @@ export default async function handler(req, res) {
       });
 
       // Converter para formato esperado pelo frontend
-      const responseMatches = matches.map((match) => ({
-        id: match.id,
-        sportType: match.sportType,
-        format: match.format,
-        players: { p1: match.playerP1, p2: match.playerP2 },
-        status: match.status,
-        score: match.score,
-        winner: match.winner,
-        completedSets: JSON.parse(match.completedSets || "[]"),
-        createdAt: match.createdAt.toISOString(),
-      }));
+      const responseMatches = matches.map((match) => {
+        const parsedState = match.matchState
+          ? JSON.parse(match.matchState)
+          : null;
+        const visibleTo = parsedState?.visibleTo || "both";
+        return {
+          id: match.id,
+          sportType: match.sportType,
+          format: match.format,
+          players: { p1: match.playerP1, p2: match.playerP2 },
+          status: match.status,
+          score: match.score,
+          winner: match.winner,
+          completedSets: JSON.parse(match.completedSets || "[]"),
+          createdAt: match.createdAt.toISOString(),
+          matchState: parsedState,
+          visibleTo,
+        };
+      });
 
       console.log(`✅ Encontradas ${responseMatches.length} partidas`);
       return res.json(responseMatches);
