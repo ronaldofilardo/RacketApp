@@ -1,5 +1,5 @@
 // src/core/scoring/TennisScoring.ts
-import type { MatchState, Player, GamePoint, TennisFormat, TennisConfig } from './types';
+import type { MatchState, Player, GamePoint, TennisFormat, TennisConfig, PointDetails, EnhancedMatchState } from './types';
 import { TennisConfigFactory } from './TennisConfigFactory';
 import { API_URL } from '../../config/api';
 
@@ -11,6 +11,7 @@ export class TennisScoring {
   private syncEnabled: boolean = false;
   private tiebreakPointsPlayed: number = 0; // Contador para troca de sacador no tie-break
   private history: MatchState[] = []; // Histórico de estados para undo
+  private pointsHistory: PointDetails[] = []; // Histórico detalhado dos pontos
 
   constructor(server: Player, format: TennisFormat = 'BEST_OF_3') {
     this.config = TennisConfigFactory.getConfig(format);
@@ -49,8 +50,13 @@ export class TennisScoring {
     };
   }
 
-  public getState(): MatchState {
-    return JSON.parse(JSON.stringify(this.state)); // Retorna uma cópia para imutabilidade
+  public getState(): EnhancedMatchState {
+    const state = JSON.parse(JSON.stringify(this.state)) as MatchState;
+    // Incluir histórico de pontos detalhados no estado
+    return {
+      ...state,
+      pointsHistory: this.pointsHistory
+    };
   }
 
   // Carregar estado existente (para continuar partidas)
@@ -103,11 +109,16 @@ export class TennisScoring {
     return this.history.length > 0;
   }
 
-  public addPoint(player: Player): MatchState {
+  public addPoint(player: Player, details?: PointDetails): MatchState {
     if (this.state.isFinished) return this.getState();
 
     // Salvar estado atual antes de modificar
     this.saveToHistory();
+
+    // Registrar detalhes do ponto se fornecidos
+    if (details) {
+      this.recordPointDetails(player, details);
+    }
 
     // Se é tiebreak ou match tiebreak, usa lógica numérica
     if (this.state.currentGame.isTiebreak || this.state.currentGame.isMatchTiebreak) {
@@ -137,8 +148,13 @@ export class TennisScoring {
         break;
       case '40':
         if (opponentPoints === '40') {
-          if (this.config.useAdvantage) {
+          if (this.config.useAdvantage && !this.config.useNoAd) {
             newPoints = 'AD'; // Vantagem
+          } else if (this.config.useNoAd) {
+            // Método No-Ad (Anexo V): Ponto decisivo
+            this.state.currentGame.isNoAdDecidingPoint = true;
+            this.winGame(player);
+            return this.getState();
           } else {
             // Sem vantagem (NO_AD, FAST4) - sudden death
             this.winGame(player);
@@ -310,13 +326,14 @@ export class TennisScoring {
     // Lógica para usar match tiebreak no set decisivo
     const isLastSet = this.isDecidingSet();
     
-    // Alguns formatos específicos que poderiam usar match tiebreak no último set
-    // (esta funcionalidade pode ser expandida no futuro)
-    if (this.config.format === 'FAST4' && isLastSet) {
-      // Fast4 poderia usar match tiebreak no 4º set se empatados
+    // BEST_OF_3_MATCH_TB: Match tiebreak no 3º set quando 1-1
+    if (this.config.format === 'BEST_OF_3_MATCH_TB' && isLastSet) {
       const sets = this.state.sets;
-      return sets.PLAYER_1 === 3 && sets.PLAYER_2 === 3;
+      return sets.PLAYER_1 === 1 && sets.PLAYER_2 === 1;
     }
+    
+    // Fast4 é um set único de 4 games, não usa match tiebreak
+    // (removendo lógica incorreta que esperava 4 sets)
     
     return false; // Por padrão, jogo normal
   }
@@ -364,14 +381,15 @@ export class TennisScoring {
   private handleTiebreakServerChange(): void {
     this.tiebreakPointsPlayed++;
     
-    // Regra do tie-break: troca a cada 2 pontos (1º ponto pelo servidor inicial, depois alterna a cada 2)
-    if (this.tiebreakPointsPlayed === 1) {
-      // Primeiro ponto: servidor mantém
-      return;
-    }
+    // Regra oficial do tie-break (Regra 5b):
+    // 1º ponto: sacador original
+    // 2º e 3º pontos: oponente saca
+    // 4º e 5º pontos: sacador original
+    // 6º e 7º pontos: oponente saca
+    // E assim por diante, alternando a cada 2 pontos após o primeiro
     
-    // A partir do 2º ponto: troca a cada 2 pontos ímpares (3, 5, 7, 9...)
-    if (this.tiebreakPointsPlayed % 2 === 1 && this.tiebreakPointsPlayed > 1) {
+    // Padrão: pontos 2, 4, 6, 8... = troca de servidor
+    if (this.tiebreakPointsPlayed % 2 === 0) {
       this.changeServer();
     }
   }
@@ -409,8 +427,8 @@ export class TennisScoring {
   }
 
   // Wrapper para addPoint que inclui sincronização automática
-  public async addPointWithSync(player: Player): Promise<MatchState> {
-    const newState = this.addPoint(player);
+  public async addPointWithSync(player: Player, details?: PointDetails): Promise<MatchState> {
+    const newState = this.addPoint(player, details);
     
     // Sincronizar automaticamente se habilitado
     if (this.syncEnabled) {
@@ -500,6 +518,159 @@ export class TennisScoring {
       side: this.getServingSide(),
       totalPointsPlayed: totalPoints,
       isOddPoint: isOdd
+    };
+  }
+
+  // Regra 10: Determina se os jogadores devem trocar de lado da quadra
+  public shouldChangeSides(): {
+    shouldChange: boolean;
+    reason: string;
+  } {
+    const p1Games = this.state.currentSetState.games.PLAYER_1;
+    const p2Games = this.state.currentSetState.games.PLAYER_2;
+    const totalGames = p1Games + p2Games;
+    
+    // Durante tie-break: troca a cada 6 pontos (padrão) ou alternativa do Anexo V
+    if (this.state.currentGame.isTiebreak) {
+      const p1Points = this.state.currentGame.points.PLAYER_1 as number;
+      const p2Points = this.state.currentGame.points.PLAYER_2 as number;
+      const totalTiebreakPoints = p1Points + p2Points;
+      
+      if (this.config.useAlternateTiebreakSides) {
+        // Anexo V: Troca após 1º ponto, depois a cada 4 pontos
+        if (totalTiebreakPoints === 1 || (totalTiebreakPoints > 1 && (totalTiebreakPoints - 1) % 4 === 0)) {
+          return {
+            shouldChange: true,
+            reason: `Tie-break alternativo: após 1º ponto e a cada 4 pontos (${totalTiebreakPoints} pontos jogados)`
+          };
+        }
+      } else {
+        // Regra padrão: a cada 6 pontos
+        if (totalTiebreakPoints > 0 && totalTiebreakPoints % 6 === 0) {
+          return {
+            shouldChange: true,
+            reason: `Tie-break: troca a cada 6 pontos (${totalTiebreakPoints} pontos jogados)`
+          };
+        }
+      }
+    }
+    
+    // Games ímpares de cada set (1º, 3º, 5º, etc.)
+    if (totalGames % 2 === 1) {
+      return {
+        shouldChange: true,
+        reason: `Fim do ${totalGames}º game (game ímpar)`
+      };
+    }
+    
+    // Fim de set (implementado no método winSet)
+    return {
+      shouldChange: false,
+      reason: 'Não é necessário trocar de lado agora'
+    };
+  }
+
+  // === MÉTODOS PARA ANÁLISE DETALHADA DE PONTOS ===
+
+  private recordPointDetails(winner: Player, details: PointDetails): void {
+    const pointDetail: PointDetails = {
+      ...details,
+      result: {
+        winner: winner,
+        type: details.result.type,
+        finalShot: details.result.finalShot
+      },
+      timestamp: Date.now()
+    };
+
+    this.pointsHistory.push(pointDetail);
+  }
+
+  public getPointsHistory(): PointDetails[] {
+    return [...this.pointsHistory];
+  }
+
+  public getLastPointDetails(): PointDetails | null {
+    return this.pointsHistory.length > 0 ? this.pointsHistory[this.pointsHistory.length - 1] : null;
+  }
+
+  public clearPointsHistory(): void {
+    this.pointsHistory = [];
+  }
+
+  // Método para obter estatísticas básicas
+  public getMatchStats(): {
+    totalPoints: number;
+    aces: number;
+    doubleFaults: number;
+    winners: number;
+    unforcedErrors: number;
+    forcedErrors: number;
+  } {
+    const stats = {
+      totalPoints: this.pointsHistory.length,
+      aces: 0,
+      doubleFaults: 0,
+      winners: 0,
+      unforcedErrors: 0,
+      forcedErrors: 0
+    };
+
+    for (const point of this.pointsHistory) {
+      // Contagem de saques
+      if (point.serve?.type === 'ACE') stats.aces++;
+      if (point.serve?.type === 'DOUBLE_FAULT') stats.doubleFaults++;
+
+      // Contagem de resultados
+      switch (point.result.type) {
+        case 'WINNER':
+          stats.winners++;
+          break;
+        case 'UNFORCED_ERROR':
+          stats.unforcedErrors++;
+          break;
+        case 'FORCED_ERROR':
+          stats.forcedErrors++;
+          break;
+      }
+    }
+
+    return stats;
+  }
+
+  // === MÉTODOS PARA REGRAS DO ANEXO V ===
+
+  // Verifica se estamos no ponto decisivo do método No-Ad
+  public isNoAdDecidingPoint(): boolean {
+    return this.state.currentGame.isNoAdDecidingPoint || false;
+  }
+
+  // Método No-Ad: Permite ao recebedor escolher o lado para receber o ponto decisivo
+  public setNoAdReceivingSide(side: 'left' | 'right'): void {
+    if (this.isNoAdDecidingPoint()) {
+      // A implementação da escolha do lado seria na interface
+      console.log(`🎾 Ponto decisivo No-Ad: Recebedor escolheu receber do lado ${side}`);
+    }
+  }
+
+  // Regra No-Let: Verifica se um saque que toca a rede deve ser jogado
+  public isNoLetServe(touchedNet: boolean): boolean {
+    if (this.config.useNoLet && touchedNet) {
+      return true; // Saque que toca a rede está em jogo
+    }
+    return false; // Regra normal: let
+  }
+
+  // Método para obter informações sobre as regras alternativas ativas
+  public getAlternativeRules(): {
+    noAd: boolean;
+    alternateTiebreakSides: boolean;
+    noLet: boolean;
+  } {
+    return {
+      noAd: this.config.useNoAd || false,
+      alternateTiebreakSides: this.config.useAlternateTiebreakSides || false,
+      noLet: this.config.useNoLet || false
     };
   }
 }

@@ -13,7 +13,10 @@ export type TennisFormat =
   | 'MATCH_TIEBREAK'   // Match Tiebreak (super tiebreak de 10 pontos)
   | 'SHORT_SET'        // Set curto (primeiro a 4 games)
   | 'NO_AD'            // Sem vantagem (sudden death no deuce)
-  | 'FAST4'            // Fast4 Tennis (4 games, sem deuce, tiebreak em 3-3);
+  | 'FAST4'            // Fast4 Tennis (4 games, sem deuce, tiebreak em 3-3)
+  | 'BEST_OF_3_MATCH_TB' // Melhor de 3 com match tiebreak no 3º set
+  | 'SHORT_SET_NO_AD'  // Set curto com método No-Ad (Anexo V)
+  | 'NO_LET_TENNIS';   // Tênis com regra No-Let (Anexo V)
 
 export interface TennisConfig {
   format: TennisFormat;
@@ -23,6 +26,11 @@ export interface TennisConfig {
   useTiebreak: boolean;
   tiebreakAt: number;
   tiebreakPoints: number;
+  
+  // Anexo V - Procedimentos Alternativos
+  useNoAd?: boolean;              // Método No-Ad (ponto decisivo em 40-40)
+  useAlternateTiebreakSides?: boolean;  // Troca lados: após 1º ponto, depois a cada 4
+  useNoLet?: boolean;             // Regra No-Let (saque na rede está em jogo)
 }
 
 export interface GameState {
@@ -31,6 +39,7 @@ export interface GameState {
   isTiebreak: boolean;
   isMatchTiebreak?: boolean;
   winner?: Player;
+  isNoAdDecidingPoint?: boolean;  // Anexo V: Ponto decisivo do método No-Ad
 }
 
 export interface SetState {
@@ -49,4 +58,37 @@ export interface MatchState {
   isFinished: boolean;
   config: TennisConfig;
   completedSets?: Array<{ setNumber: number; games: Record<Player, number>; winner: Player; tiebreakScore?: Record<Player, number> }>;
+}
+
+// === SISTEMA DE ANÁLISE DETALHADA DE PONTOS ===
+
+export type ServeType = 'ACE' | 'FAULT_FIRST' | 'DOUBLE_FAULT' | 'SERVICE_WINNER';
+export type PointResultType = 'WINNER' | 'UNFORCED_ERROR' | 'FORCED_ERROR';
+export type ShotType = 'FOREHAND' | 'BACKHAND' | 'VOLLEY' | 'SMASH' | 'SLICE' | 'DROP_SHOT' | 'LOB' | 'PASSING_SHOT';
+
+export interface PointDetails {
+  // Informações do Saque
+  serve?: {
+    type: ServeType;
+    isFirstServe: boolean;
+  };
+  
+  // Resultado do Ponto
+  result: {
+    winner: Player;
+    type: PointResultType;
+    finalShot?: ShotType;
+  };
+  
+  // Duração do Rally (número de trocas)
+  rally: {
+    ballExchanges: number; // Número de trocas de bola
+  };
+  
+  // Timestamp para análise
+  timestamp: number;
+}
+
+export interface EnhancedMatchState extends MatchState {
+  pointsHistory?: PointDetails[];
 }

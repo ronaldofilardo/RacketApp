@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import './ScoreboardV2.css';
 import { TennisScoring } from '../core/scoring/TennisScoring';
 import { TennisConfigFactory } from '../core/scoring/TennisConfigFactory';
-import type { MatchState, TennisFormat, Player } from '../core/scoring/types';
+import type { MatchState, TennisFormat, Player, PointDetails } from '../core/scoring/types';
 import { API_URL } from '../config/api';
+import PointDetailsModal from '../components/PointDetailsModal';
 
 interface MatchData {
   id: string;
@@ -75,6 +76,11 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
   const [scoringSystem, setScoringSystem] = useState<TennisScoring | null>(null);
   const [matchState, setMatchState] = useState<MatchState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Estados para o sistema de análise detalhada
+  const [detailedModeEnabled, setDetailedModeEnabled] = useState(false);
+  const [isPointDetailsOpen, setIsPointDetailsOpen] = useState(false);
+  const [pendingPointWinner, setPendingPointWinner] = useState<Player | null>(null);
 
   const players = match.players || { p1: 'Jogador A', p2: 'Jogador B' };
 
@@ -124,9 +130,23 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
   const handleAddPoint = async (player: Player) => {
     if (!scoringSystem || !matchState) return;
 
+    // Se modo detalhado está ativo, abrir modal primeiro
+    if (detailedModeEnabled) {
+      setPendingPointWinner(player);
+      setIsPointDetailsOpen(true);
+      return;
+    }
+
+    // Modo normal - adicionar ponto diretamente
+    await addPointToMatch(player);
+  };
+
+  const addPointToMatch = async (player: Player, details?: PointDetails) => {
+    if (!scoringSystem || !matchState) return;
+
     try {
-      // Usar método com sincronização automática
-      const newState = await scoringSystem.addPointWithSync(player);
+      // Usar método com sincronização automática (com ou sem detalhes)
+      const newState = await scoringSystem.addPointWithSync(player, details);
       setMatchState(newState);
 
       if (newState.isFinished) {
@@ -145,9 +165,22 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
     } catch (error) {
       console.error('Erro ao adicionar ponto:', error);
       // Fallback: usar método normal se sync falhar
-      const newState = scoringSystem.addPoint(player);
+      const newState = scoringSystem.addPoint(player, details);
       setMatchState(newState);
     }
+  };
+
+  const handlePointDetailsConfirm = (details: PointDetails) => {
+    if (!pendingPointWinner) return;
+    
+    addPointToMatch(pendingPointWinner, details);
+    setIsPointDetailsOpen(false);
+    setPendingPointWinner(null);
+  };
+
+  const handlePointDetailsCancel = () => {
+    setIsPointDetailsOpen(false);
+    setPendingPointWinner(null);
   };
 
   const handleUndo = async () => {
@@ -323,7 +356,23 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
         >
           ↩️ Correção (Undo)
         </button>
+        
+        <button 
+          className={`detailed-mode-button ${detailedModeEnabled ? 'active' : ''}`}
+          onClick={() => setDetailedModeEnabled(!detailedModeEnabled)}
+          title={detailedModeEnabled ? "Desativar modo detalhado" : "Ativar modo detalhado"}
+        >
+          📊 {detailedModeEnabled ? 'Modo Simples' : 'Modo Detalhado'}
+        </button>
       </div>
+
+      {/* Modal para detalhes do ponto */}
+      <PointDetailsModal
+        isOpen={isPointDetailsOpen}
+        winner={pendingPointWinner || 'PLAYER_1'}
+        onConfirm={handlePointDetailsConfirm}
+        onCancel={handlePointDetailsCancel}
+      />
     </div>
   );
 };

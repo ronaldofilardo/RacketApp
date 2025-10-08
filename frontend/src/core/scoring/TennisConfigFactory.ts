@@ -12,7 +12,10 @@ export class TennisConfigFactory {
           useAdvantage: true,
           useTiebreak: true,
           tiebreakAt: 6,
-          tiebreakPoints: 7
+          tiebreakPoints: 7,
+          useNoAd: false,
+          useAlternateTiebreakSides: false,
+          useNoLet: false
         };
 
       case 'BEST_OF_5':
@@ -23,7 +26,10 @@ export class TennisConfigFactory {
           useAdvantage: true,
           useTiebreak: true,
           tiebreakAt: 6,
-          tiebreakPoints: 7
+          tiebreakPoints: 7,
+          useNoAd: false,
+          useAlternateTiebreakSides: false,
+          useNoLet: false
         };
 
       case 'SINGLE_SET':
@@ -34,7 +40,10 @@ export class TennisConfigFactory {
           useAdvantage: true,
           useTiebreak: true,
           tiebreakAt: 6,
-          tiebreakPoints: 7
+          tiebreakPoints: 7,
+          useNoAd: false,
+          useAlternateTiebreakSides: false,
+          useNoLet: false
         };
 
       case 'PRO_SET':
@@ -45,7 +54,10 @@ export class TennisConfigFactory {
           useAdvantage: true,
           useTiebreak: true,
           tiebreakAt: 8,
-          tiebreakPoints: 7
+          tiebreakPoints: 7,
+          useNoAd: false,
+          useAlternateTiebreakSides: false,
+          useNoLet: false
         };
 
       case 'MATCH_TIEBREAK':
@@ -56,7 +68,10 @@ export class TennisConfigFactory {
           useAdvantage: false,
           useTiebreak: true,
           tiebreakAt: 0,
-          tiebreakPoints: 10
+          tiebreakPoints: 10,
+          useNoAd: false,
+          useAlternateTiebreakSides: false,
+          useNoLet: false
         };
 
       case 'SHORT_SET':
@@ -65,9 +80,12 @@ export class TennisConfigFactory {
           setsToWin: 1,
           gamesPerSet: 4,
           useAdvantage: true,
-          useTiebreak: false, // Set curto não usa tiebreak
-          tiebreakAt: 4, // Não será usado, mas mantém consistência
-          tiebreakPoints: 7
+          useTiebreak: true, // CORREÇÃO: Anexo V especifica tie-break em 4-4
+          tiebreakAt: 4, // Tie-break em 4-4 conforme Anexo V
+          tiebreakPoints: 7,
+          useNoAd: false,
+          useAlternateTiebreakSides: false,
+          useNoLet: false
         };
 
       case 'NO_AD':
@@ -75,21 +93,69 @@ export class TennisConfigFactory {
           format,
           setsToWin: 2,
           gamesPerSet: 6,
-          useAdvantage: false, // Sem vantagem - sudden death
+          useAdvantage: false, // CORREÇÃO: Se usa No-Ad, não usa vantagem tradicional
           useTiebreak: true,
           tiebreakAt: 6,
-          tiebreakPoints: 7
+          tiebreakPoints: 7,
+          useNoAd: true,
+          useAlternateTiebreakSides: false,
+          useNoLet: false
         };
 
       case 'FAST4':
         return {
           format,
-          setsToWin: 4, // Primeiro a vencer 4 sets curtos
+          setsToWin: 1, // CORREÇÃO: Fast4 é um SET com 4 games
           gamesPerSet: 4,
           useAdvantage: false,
           useTiebreak: true,
           tiebreakAt: 3, // Tiebreak em 3-3
-          tiebreakPoints: 7
+          tiebreakPoints: 7,
+          useNoAd: true, // CORREÇÃO: Fast4 usa método No-Ad
+          useAlternateTiebreakSides: false,
+          useNoLet: false
+        };
+
+      case 'BEST_OF_3_MATCH_TB':
+        return {
+          format,
+          setsToWin: 2,
+          gamesPerSet: 6,
+          useAdvantage: true,
+          useTiebreak: true,
+          tiebreakAt: 6,
+          tiebreakPoints: 10, // Match tiebreak no 3º set é de 10 pontos
+          useNoAd: false,
+          useAlternateTiebreakSides: false,
+          useNoLet: false
+        };
+
+      case 'SHORT_SET_NO_AD':
+        return {
+          format,
+          setsToWin: 1,
+          gamesPerSet: 4,
+          useAdvantage: false,
+          useTiebreak: true,
+          tiebreakAt: 4, // Tie-break em 4-4
+          tiebreakPoints: 7,
+          useNoAd: true,
+          useAlternateTiebreakSides: false,
+          useNoLet: false
+        };
+
+      case 'NO_LET_TENNIS':
+        return {
+          format,
+          setsToWin: 2,
+          gamesPerSet: 6,
+          useAdvantage: true,
+          useTiebreak: true,
+          tiebreakAt: 6,
+          tiebreakPoints: 7,
+          useNoAd: false,
+          useAlternateTiebreakSides: false,
+          useNoLet: true
         };
 
       default:
@@ -107,6 +173,9 @@ export class TennisConfigFactory {
       case 'SHORT_SET': return 'Set curto (4 games)';
       case 'NO_AD': return 'Sem vantagem';
       case 'FAST4': return 'Fast4 Tennis';
+      case 'BEST_OF_3_MATCH_TB': return 'Melhor de 3 c/ Match TB';
+      case 'SHORT_SET_NO_AD': return 'Set curto No-Ad';
+      case 'NO_LET_TENNIS': return 'Tênis No-Let';
       default: return format;
     }
   }
@@ -124,11 +193,17 @@ export class TennisConfigFactory {
       case 'MATCH_TIEBREAK': 
         return 'Match Tiebreak (10 pontos) sem vantagem, Primeiro a 10';
       case 'SHORT_SET': 
-        return 'Set curto (4 games) com vantagem, Sem tie-break';
+        return 'Set curto (4 games) com vantagem, Tie-break em 4-4';
       case 'NO_AD': 
-        return 'Melhor de 3 sets sem vantagem, Set tie-break em todos os sets';
+        return 'Melhor de 3 sets método No-Ad (ponto decisivo em 40-40), Set tie-break em 6-6';
       case 'FAST4': 
-        return 'Fast4 Tennis sem vantagem, Set tie-break em 3-3';
+        return 'Fast4 Tennis (4 games) método No-Ad, Tie-break em 3-3';
+      case 'BEST_OF_3_MATCH_TB':
+        return 'Melhor de 3 sets com vantagem, Set tie-break em 6-6, Match tie-break no 3º set';
+      case 'SHORT_SET_NO_AD':
+        return 'Set curto (4 games) método No-Ad, Tie-break em 4-4';
+      case 'NO_LET_TENNIS':
+        return 'Melhor de 3 sets método No-Let (saque na rede está em jogo)';
       default: 
         return format;
     }

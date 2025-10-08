@@ -1,6 +1,8 @@
-import React from 'react'; // A importação do React estava faltando
+import React, { useState } from 'react'; // A importação do React estava faltando
 import { TennisConfigFactory } from '../core/scoring/TennisConfigFactory';
 import type { TennisFormat } from '../core/scoring/types';
+import MatchStatsModal from '../components/MatchStatsModal';
+import { API_URL } from '../config/api';
 import './Dashboard.css';
 
 // Interface para as props, incluindo a função para navegar
@@ -27,10 +29,74 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch, onStartMatch, matches, loading, error }) => {
+  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState<DashboardMatch | null>(null);
+  const [matchStats, setMatchStats] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
+  
   const statusMap: Record<string, string> = {
     NOT_STARTED: 'Não Iniciada',
     IN_PROGRESS: 'Em Andamento',
     FINISHED: 'Finalizada'
+  };
+
+  // Função para buscar estatísticas da partida
+  const fetchMatchStats = async (matchId: string | number) => {
+    setLoadingStats(true);
+    try {
+      const response = await fetch(`${API_URL}/matches/${matchId}/stats`);
+      if (response.ok) {
+        const stats = await response.json();
+
+        // Normalizar resposta: garantir player1/player2 e match
+        const createEmptyPlayer = () => ({
+          pointsWon: 0,
+          totalServes: 0,
+          firstServes: 0,
+          secondServes: 0,
+          firstServeWins: 0,
+          secondServeWins: 0,
+          aces: 0,
+          doubleFaults: 0,
+          serviceWinners: 0,
+          servicePointsWon: 0,
+          returnPointsWon: 0,
+          winners: 0,
+          unforcedErrors: 0,
+          forcedErrors: 0,
+          shortRallies: 0,
+          longRallies: 0,
+          breakPoints: 0,
+          breakPointsSaved: 0,
+          firstServePercentage: 0,
+          firstServeWinPercentage: 0,
+          secondServeWinPercentage: 0,
+          serviceHoldPercentage: 0,
+          breakPointConversion: 0,
+          winnerToErrorRatio: 0,
+          returnWinPercentage: 0,
+          dominanceRatio: 0,
+        });
+
+        const safeStats = {
+          totalPoints: stats?.totalPoints ?? 0,
+          player1: (stats && stats.player1) ? stats.player1 : createEmptyPlayer(),
+          player2: (stats && stats.player2) ? stats.player2 : createEmptyPlayer(),
+          match: (stats && stats.match) ? stats.match : { avgRallyLength: stats?.avgRallyLength ?? 0, longestRally: stats?.longestRally ?? 0, shortestRally: stats?.shortestRally ?? 0, totalRallies: stats?.pointsHistory ? stats.pointsHistory.length : 0 },
+          pointsHistory: stats?.pointsHistory ?? [],
+        };
+
+        setMatchStats(safeStats);
+      } else {
+        console.error('Erro ao buscar estatísticas');
+        setMatchStats(null);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar estatísticas:', error);
+      setMatchStats(null);
+    } finally {
+      setLoadingStats(false);
+    }
   };
   return (
     <div className="dashboard">
@@ -114,28 +180,42 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch,
             }}>
               <div className="match-card-header">
                 <div className="match-card-sport">{sportAndFormat}</div>
-                {match.status === 'IN_PROGRESS' && onContinueMatch && (
+                <div className="match-actions">
                   <button 
-                    className="continue-button"
-                    onClick={(e) => {
+                    className="stats-button"
+                    onClick={async (e) => {
                       e.stopPropagation();
-                      onContinueMatch(match);
+                      setSelectedMatch(match);
+                      await fetchMatchStats(match.id);
+                      setIsStatsModalOpen(true);
                     }}
+                    title="Ver estatísticas da partida"
                   >
-                    Continuar
+                    📊
                   </button>
-                )}
-                {match.status === 'NOT_STARTED' && onStartMatch && (
-                  <button 
-                    className="start-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onStartMatch(match);
-                    }}
-                  >
-                    Iniciar
-                  </button>
-                )}
+                  {match.status === 'IN_PROGRESS' && onContinueMatch && (
+                    <button 
+                      className="continue-button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onContinueMatch(match);
+                      }}
+                    >
+                      Continuar
+                    </button>
+                  )}
+                  {match.status === 'NOT_STARTED' && onStartMatch && (
+                    <button 
+                      className="start-button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onStartMatch(match);
+                      }}
+                    >
+                      Iniciar
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="match-card-players">{playersText}</div>
               <div className="match-card-score">{match.score || ''}</div>
@@ -145,6 +225,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch,
           );
         })}
       </div>
+      
+      {/* Modal de Estatísticas */}
+      <MatchStatsModal
+        isOpen={isStatsModalOpen}
+        onClose={() => setIsStatsModalOpen(false)}
+        matchId={selectedMatch?.id?.toString() || ''}
+        playerNames={
+          selectedMatch?.players && typeof selectedMatch.players === 'object'
+            ? selectedMatch.players
+            : { p1: 'Jogador 1', p2: 'Jogador 2' }
+        }
+        stats={matchStats}
+      />
     </div>
   );
 };

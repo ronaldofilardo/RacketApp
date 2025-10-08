@@ -92,13 +92,16 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onBackToDashboard, onMatchCreat
           <label>Modo de jogo</label>
           <select id="format" name="format" value={format} onChange={(e) => setFormat(e.target.value)}>
             <option value="BEST_OF_3">Melhor de 3 sets com vantagem, Set tie-break em todos os sets</option>
+            <option value="BEST_OF_3_MATCH_TB">Melhor de 3 sets com vantagem, Set tie-break em 6-6, Match tie-break no 3º set</option>
             <option value="BEST_OF_5">Melhor de 5 sets com vantagem, Set tie-break em todos os sets</option>
             <option value="SINGLE_SET">Set único com vantagem, Set tie-break em 6-6</option>
             <option value="PRO_SET">Pro Set (8 games) com vantagem, Set tie-break em 8-8</option>
             <option value="MATCH_TIEBREAK">Match Tiebreak (10 pontos) sem vantagem, Primeiro a 10</option>
-            <option value="SHORT_SET">Set curto (4 games) com vantagem, Sem tie-break</option>
-            <option value="NO_AD">Melhor de 3 sets sem vantagem, Set tie-break em todos os sets</option>
-            <option value="FAST4">Fast4 Tennis sem vantagem, Set tie-break em 3-3</option>
+            <option value="SHORT_SET">Set curto (4 games) com vantagem, Tie-break em 4-4</option>
+            <option value="NO_AD">Melhor de 3 sets método No-Ad (ponto decisivo em 40-40), Set tie-break em 6-6</option>
+            <option value="FAST4">Fast4 Tennis (4 games) método No-Ad, Tie-break em 3-3</option>
+            <option value="SHORT_SET_NO_AD">Set curto (4 games) método No-Ad, Tie-break em 4-4</option>
+            <option value="NO_LET_TENNIS">Melhor de 3 sets método No-Let (saque na rede está em jogo)</option>
           </select>
         </div>
 

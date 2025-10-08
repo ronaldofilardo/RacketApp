@@ -73,6 +73,12 @@
   font-size: 1.1rem;
 }
 
+.match-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .continue-button, .start-button {
   color: white;
   border: none;
@@ -96,6 +102,27 @@
 
 .start-button:hover {
   background-color: #45a049;
+}
+
+.stats-button {
+  background-color: #667eea;
+  color: white;
+  border: none;
+  padding: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.stats-button:hover {
+  background-color: #5a67d8;
+  transform: scale(1.05);
 }
 
 /* Tornar cards clicáveis */
