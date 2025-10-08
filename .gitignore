@@ -95,6 +95,13 @@ public
 /backend/prisma/dev.db-journal
 /backend/prisma/migrations/
 
+# Backend envs and local backups
+/backend/.env
+/backend/.env.local
+/backend/prisma/backups/
+*.dump
+*.sql
+
 # OS generated files
 .DS_Store
 .DS_Store?
