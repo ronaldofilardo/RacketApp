@@ -15,10 +15,16 @@ const getApiUrl = (): string => {
   }
 
   if (typeof window !== 'undefined') {
-    // In browser/dev: resolve to current host but backend listens on port 4001 in local dev
+    // If running on Vercel (production), and VITE_API_URL was not provided,
+    // prefer the same origin (no :4001) so the frontend requests go to the
+    // deployed backend endpoint or serverless function attached to the same
+    // project. For local development we still default to port 4001.
+    const hostname = window.location.hostname || 'localhost';
     const proto = window.location.protocol || 'http:';
-    const host = window.location.hostname || 'localhost';
-    return `${proto}//${host}:4001`;
+    if (hostname.includes('vercel.app') || hostname.includes('vercel.com')) {
+      return window.location.origin;
+    }
+    return `${proto}//${hostname}:4001`;
   }
 
   return 'http://localhost:4001';
