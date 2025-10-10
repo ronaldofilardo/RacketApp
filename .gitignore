@@ -130,4 +130,12 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
-.vercel
+.vercel/
+
+# Remover rastros de deploys antigos e arquivos de workflow
+.github/
+DEPLOY_*.md
+DEPLOY*.md
+DEPLOY*
+backend/prisma/migration_lock_sqlite.toml
+backend/prisma/migrations_sqlite_backup/
