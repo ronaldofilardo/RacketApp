@@ -151,7 +151,7 @@ function App() {
   
   const navigateToMatchSetup = () => setCurrentPage('MATCH_SETUP');
   
-  const continueMatch = (matchData: DashboardMatch) => {
+  const continueMatch = async (matchData: DashboardMatch) => {
     // Converter DashboardMatch para MatchData
     const convertedMatch: MatchData = {
       id: matchData.id.toString(),
@@ -168,9 +168,10 @@ function App() {
       })),
     };
     
+    // Primeiro registrar view (garante startedAt salvo no backend)
+    await registerView(convertedMatch.id);
     setActiveMatch(convertedMatch);
     setCurrentPage('SCOREBOARD');
-    registerView(convertedMatch.id);
   };
   
   const startMatch = (matchData: MatchData) => {
@@ -181,7 +182,7 @@ function App() {
     registerView(matchData.id);
   };
 
-  const startExistingMatch = (matchData: DashboardMatch) => {
+  const startExistingMatch = async (matchData: DashboardMatch) => {
     // Converter DashboardMatch para MatchData (mesmo que continueMatch)
     const convertedMatch: MatchData = {
       id: matchData.id.toString(),
@@ -198,9 +199,9 @@ function App() {
       })),
     };
     
+    await registerView(convertedMatch.id);
     setActiveMatch(convertedMatch);
     setCurrentPage('SCOREBOARD');
-    registerView(convertedMatch.id);
   };
 
   // Registra a visualização do card: adiciona um entry em matchState.viewLog com timestamps e duração

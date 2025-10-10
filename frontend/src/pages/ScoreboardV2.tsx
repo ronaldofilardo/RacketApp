@@ -257,21 +257,22 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
 
   // Função para formatar histórico de sets
   const formatSetsHistory = (): string => {
+    // Sempre tentar usar completedSets do matchState, que deve conter os sets
     if (!matchState?.completedSets) return '';
-    
-    return matchState.completedSets.map(set => {
+
+    return (matchState.completedSets || []).map(set => {
       const p1Games = set.games.PLAYER_1;
       const p2Games = set.games.PLAYER_2;
       
       // Se houve tiebreak, exibe o resultado do tiebreak
       if (set.tiebreakScore) {
-        const tieLoser = set.winner === 'PLAYER_1' ? 'PLAYER_2' : 'PLAYER_1';
-        const loserScore = set.tiebreakScore[tieLoser];
-        
-        // Exibe como "7-6(9)" onde 9 é o placar do perdedor do tiebreak
+        // Mostrar o placar do tiebreak entre parênteses como nos exemplos (7-6(4))
+        const tbs = set.tiebreakScore as { PLAYER_1: number; PLAYER_2: number };
+        const loser = set.winner === 'PLAYER_1' ? 'PLAYER_2' : 'PLAYER_1';
+        const loserScore = tbs[loser];
         return `${p1Games}-${p2Games}(${loserScore})`;
       }
-      
+
       return `${p1Games}-${p2Games}`;
     }).join(', ');
   };
@@ -316,34 +317,34 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
 
   return (
     <div className="scoreboard-v2">
-      <div className="scoreboard-header">
+  <div className="scoreboard-header" data-testid="scoreboard-header">
         <div>
           <h3>{match.sportType} - {TennisConfigFactory.getFormatDetailedName((match.format as TennisFormat) || 'BEST_OF_3')}</h3>
           <div className="match-timestamps">
-            {startedAt ? <span className="match-start">Início: {new Date(startedAt).toLocaleString()}</span> : null}
-            {startedAt ? <span className="match-elapsed">Tempo: {Math.floor(elapsed/3600).toString().padStart(2,'0')}:{Math.floor((elapsed%3600)/60).toString().padStart(2,'0')}:{(elapsed%60).toString().padStart(2,'0')}</span> : null}
+            {startedAt && !matchState.isFinished && (
+              <>
+                <span className="match-start highlight-info" data-testid={`scoreboard-startedAt-${match.id}`}>Início: {new Date(startedAt).toLocaleString()}</span>
+                <span className="match-elapsed highlight-info" data-testid={`scoreboard-elapsed-${match.id}`}>⏱️ Tempo: {Math.floor(elapsed/3600).toString().padStart(2,'0')}:{Math.floor((elapsed%3600)/60).toString().padStart(2,'0')}:{(elapsed%60).toString().padStart(2,'0')}</span>
+              </>
+            )}
+            {startedAt && matchState.isFinished && (
+              <span className="match-start" data-testid={`scoreboard-startedAt-${match.id}`}>Início: {new Date(startedAt).toLocaleString()}</span>
+            )}
           </div>
         </div>
         <button onClick={onEndMatch} className="end-match-button">✕</button>
       </div>
 
       {/* Linha de status ao vivo ou resultado final */}
-      {matchState.isFinished ? (
-        <div className="status-line finished-status">
-          <span className="status-label">RESULTADO FINAL:</span>
-          <span style={{ fontWeight: 700, marginLeft: 8, marginRight: 8 }}>
-            {matchState.winner === 'PLAYER_1' ? players.p1 : players.p2} VENCEU!
-          </span>
-          <span>{matchState.sets.PLAYER_1} sets x {matchState.sets.PLAYER_2} sets</span>
-        </div>
-      ) : (
-        <div className="status-line live-status">
-          <span className="status-label">AO VIVO:</span>
-          <span>Sets: {matchState.sets.PLAYER_1}-{matchState.sets.PLAYER_2} | </span>
-          <span>Games: {matchState.currentSetState.games.PLAYER_1}-{matchState.currentSetState.games.PLAYER_2} | </span>
-          <span>Pontos: {renderCurrentScore('PLAYER_1')}-{renderCurrentScore('PLAYER_2')}</span>
-        </div>
-      )}
+        {matchState.isFinished ? (
+          <div className="status-line finished-status">
+            <span className="status-label">RESULTADO FINAL:</span>
+            <span style={{ fontWeight: 700, marginLeft: 8, marginRight: 8 }}>
+              {matchState.winner === 'PLAYER_1' ? players.p1 : players.p2} VENCEU!
+            </span>
+            <span>{matchState.sets.PLAYER_1} sets x {matchState.sets.PLAYER_2} sets</span>
+          </div>
+        ) : null}
 
       {/* Área principal de pontuação */}
       <div className="score-main">
@@ -407,6 +408,7 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
           className="point-button point-button-p1"
           onClick={() => handleAddPoint('PLAYER_1')}
           disabled={matchState.isFinished}
+          data-testid="point-button-p1"
         >
           + Ponto {players.p1}
         </button>
@@ -415,6 +417,7 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
           className="point-button point-button-p2"
           onClick={() => handleAddPoint('PLAYER_2')}
           disabled={matchState.isFinished}
+          data-testid="point-button-p2"
         >
           + Ponto {players.p2}
         </button>

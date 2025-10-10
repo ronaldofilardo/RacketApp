@@ -254,7 +254,7 @@ export default async function handler(req, res) {
 
         const match = await prisma.match.findUnique({
           where: { id },
-          select: { matchState: true },
+          select: { matchState: true, createdAt: true },
         });
 
         if (!match) {
@@ -262,14 +262,24 @@ export default async function handler(req, res) {
         }
 
         console.log("✅ Estado encontrado para partida:", id);
-        return res.json({
-          matchState: match.matchState ? JSON.parse(match.matchState) : null,
-        });
+        let ms = match.matchState ? JSON.parse(match.matchState) : null;
+        // Se não houver startedAt e status indica IN_PROGRESS, derivar de createdAt
+        if (ms && !ms.startedAt && ms.status === "IN_PROGRESS") {
+          ms.startedAt = match.createdAt
+            ? match.createdAt.toISOString()
+            : new Date().toISOString();
+        }
+        return res.json({ matchState: ms });
       }
 
       if (method === "PATCH") {
-        const { matchState } = req.body;
+        let { matchState } = req.body;
         console.log(`🔄 Atualizando estado da partida ${id}...`);
+
+        // Garante que startedAt sempre exista
+        if (!matchState.startedAt) {
+          matchState.startedAt = new Date().toISOString();
+        }
 
         const updatedMatch = await prisma.match.update({
           where: { id },

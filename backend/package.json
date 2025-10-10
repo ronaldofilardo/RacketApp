@@ -6,15 +6,17 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
-  "build": "prisma generate && prisma db push",
-  "vercel-build": "prisma generate --schema prisma/schema.postgres.prisma",
+    "build": "prisma generate && prisma db push",
+    "vercel-build": "prisma generate --schema prisma/schema.postgres.prisma",
     "prisma:generate": "prisma generate",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "seed": "node scripts/seed.mjs http://localhost:4001"
   },
   "dependencies": {
     "@prisma/client": "^6.16.3",
     "cors": "^2.8.5",
     "express": "^4.18.2",
+    "node-fetch": "^3.3.2",
     "pg": "^8.16.3",
     "prisma": "^6.16.3"
   }

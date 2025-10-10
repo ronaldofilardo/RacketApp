@@ -59,6 +59,17 @@ export class TennisScoring {
     };
   }
 
+  // Permite forçar startedAt (útil para testes e restauração)
+  public setStartedAt(iso: string) {
+    // attach to state copy
+    this.state.startedAt = iso;
+  }
+
+  // Permite forçar endedAt (útil para testes e fechamento de partida)
+  public setEndedAt(iso: string) {
+    this.state.endedAt = iso;
+  }
+
   // Carregar estado existente (para continuar partidas)
   public loadState(savedState: MatchState): void {
     // Validar se o estado é compatível com a configuração atual
@@ -356,6 +367,45 @@ export class TennisScoring {
   }
 
   private winMatch(player: Player) {
+    // Se a partida foi decidida por um match-tiebreak, precisamos
+    // registrar o set final nas parciais (completedSets) e garantir
+    // que o contador de sets do vencedor seja incrementado.
+    try {
+      const finishedSetNumber = this.state.currentSet;
+
+      // Evitar duplicar um registro de set caso já tenha sido salvo
+      const alreadyRecorded = Array.isArray(this.state.completedSets) &&
+        this.state.completedSets.some(s => s.setNumber === finishedSetNumber);
+
+      if (!alreadyRecorded) {
+        const gamesSnapshot = { ...this.state.currentSetState.games };
+        let tiebreakScore: {PLAYER_1: number, PLAYER_2: number} | undefined = undefined;
+        if (this.state.currentGame && this.state.currentGame.isMatchTiebreak) {
+          const cg = this.state.currentGame;
+          tiebreakScore = {
+            PLAYER_1: Number(cg.points?.PLAYER_1 ?? 0),
+            PLAYER_2: Number(cg.points?.PLAYER_2 ?? 0),
+          };
+        }
+
+        if (!this.state.completedSets) this.state.completedSets = [];
+        this.state.completedSets.push({
+          setNumber: finishedSetNumber,
+          games: gamesSnapshot,
+          winner: player,
+          tiebreakScore: tiebreakScore,
+        });
+
+        // Incrementar o contador de sets do vencedor (apenas se ainda não incrementado)
+        if (typeof this.state.sets[player] === 'number') {
+          this.state.sets[player] = (this.state.sets[player] as number) + 1;
+        }
+      }
+    } catch (e) {
+      // Se algo falhar aqui não queremos bloquear a finalização da partida
+      console.warn('Falha ao registrar set final em winMatch:', e);
+    }
+
     this.state.winner = player;
     this.state.isFinished = true;
   }

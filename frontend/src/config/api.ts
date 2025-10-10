@@ -6,9 +6,7 @@
 const getApiUrl = (): string => {
   // Vite env variables are exposed on import.meta.env
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const env = (import.meta as any).env;
-    const v = env && env.VITE_API_URL;
+    const v = import.meta.env?.VITE_API_URL;
     if (typeof v === 'string' && v.length > 0) return v.replace(/\/$/, '');
   } catch {
     // ignore if import.meta is not available in some environments

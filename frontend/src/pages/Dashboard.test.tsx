@@ -48,12 +48,17 @@ describe('Dashboard Partials Display', () => {
       />
     );
 
-    expect(screen.getByText('Sets:')).toBeInTheDocument();
-    expect(screen.getByText('2 x 0')).toBeInTheDocument();
-    expect(screen.getByText('Games:')).toBeInTheDocument();
-    expect(screen.getByText('6 x 2')).toBeInTheDocument(); // Last set
-    expect(screen.getByText('Pontos:')).toBeInTheDocument();
-    expect(screen.getByText('-/-')).toBeInTheDocument();
+  // For finished matches Dashboard currently shows the final score string
+  const live1 = screen.queryByTestId('live-status-1');
+  // finished match should not render a live-status container
+  expect(live1).toBeNull();
+  // but the score should be visible in the card via testid
+  expect(screen.getByTestId('match-card-score-1').textContent).toBe('2x0');
+  // parciais detalhadas devem estar visíveis
+  const partials1 = screen.getByTestId('match-card-partials-1');
+  expect(partials1).toBeTruthy();
+  expect(partials1.textContent).toContain('6/4');
+  expect(partials1.textContent).toContain('6/2');
   });
 
   it('should show partials for in progress matches', () => {
@@ -69,12 +74,15 @@ describe('Dashboard Partials Display', () => {
       />
     );
 
-    expect(screen.getByText('Sets:')).toBeInTheDocument();
-    expect(screen.getByText('1 x 0')).toBeInTheDocument();
-    expect(screen.getByText('Games:')).toBeInTheDocument();
-    expect(screen.getByText('3 x 1')).toBeInTheDocument();
-    expect(screen.getByText('Pontos:')).toBeInTheDocument();
-    expect(screen.getByText('40/15')).toBeInTheDocument();
+  const live2 = screen.getByTestId('live-status-2');
+  expect(live2).toBeTruthy();
+  // check specific child elements
+  expect(screen.getByTestId('live-status-sets-2').textContent).toContain('Sets:');
+  expect(screen.getByTestId('live-status-games-2').textContent).toContain('Games:');
+  expect(screen.getByTestId('live-status-points-2').textContent).toContain('Pontos:');
+  // partials string
+  const partials = screen.getByTestId('live-status-partials-2');
+  expect(partials.textContent).toContain('3(40)/1(15)');
   });
 
   it('should not show partials for not started matches', () => {
@@ -90,6 +98,6 @@ describe('Dashboard Partials Display', () => {
       />
     );
 
-    expect(screen.queryByText('Sets:')).not.toBeInTheDocument();
+  expect(screen.queryAllByText((c,e) => e?.textContent?.includes('Sets:') ?? false).length).toBe(0);
   });
 });

@@ -29,7 +29,7 @@ interface DashboardProps {
   players?: Array<{ id: string; email?: string; name: string }>;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch, onStartMatch, matches, loading, error, currentUser, players }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch, onStartMatch, matches, loading, error, currentUser }) => {
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<DashboardMatch | null>(null);
   const [matchStats, setMatchStats] = useState<MatchStatsModalData | null>(null);
@@ -49,10 +49,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch,
     setMatchStats(stats);
   };
 
-  const canViewMatch = (match: DashboardMatch) => {
+  const canViewMatch = () => {
     if (!currentUser) return false;
     if (currentUser.role === 'annotator') return true;
-
     // Para players, mostrar todas as partidas por enquanto (simplificação)
     // Em produção, implementar lógica mais complexa baseada em visibleTo
     return true;
@@ -89,10 +88,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch,
   };
 
   return (
-    <div className="dashboard">
+  <div className="dashboard" data-testid="dashboard">
       <header className="dashboard-header">
         <h2>Minhas Partidas</h2>
-        <div className="dashboard-actions"><button onClick={onNewMatchClick} className="new-match-button">+ Nova Partida</button></div>
+  <div className="dashboard-actions"><button onClick={onNewMatchClick} className="new-match-button">Nova Partida</button></div>
       </header>
 
       {loading && <p>Carregando partidas...</p>}
@@ -100,10 +99,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch,
 
       <div className="match-list">
         {matches
-          .filter((match) => canViewMatch(match))
+          .filter(() => canViewMatch())
           .map((match) => {
           const playersText = match.players && typeof match.players === 'object' ? `${match.players.p1} vs. ${match.players.p2}` : (match.players ?? '—');
-          const canView = canViewMatch(match);
+          const canView = canViewMatch();
           // extrair último viewLog se houver (checagem segura)
           const possibleState = (match as unknown) as { matchState?: unknown };
           const rawMatchState = possibleState.matchState && typeof possibleState.matchState === 'object' ? possibleState.matchState as Record<string, unknown> : null;
@@ -140,29 +139,43 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch,
                 if (match.status !== 'IN_PROGRESS') return null;
                 // Padrão já usado acima para extrair matchState
                 const possibleState = (match as unknown) as { matchState?: unknown };
-                const ms = possibleState.matchState && typeof possibleState.matchState === 'object' ? possibleState.matchState as Record<string, any> : null;
+                const ms = possibleState.matchState && typeof possibleState.matchState === 'object' ? possibleState.matchState as Record<string, unknown> : null;
                 if (!ms) return null;
                 // Detecta tie-break
-                const isTiebreak = ms.currentGame?.isTiebreak;
-                const isMatchTiebreak = ms.currentGame?.isMatchTiebreak;
+                const currentGame = (ms.currentGame && typeof ms.currentGame === 'object') ? ms.currentGame as Record<string, unknown> : null;
+                const isTiebreak = currentGame ? Boolean(currentGame['isTiebreak']) : false;
+                const isMatchTiebreak = currentGame ? Boolean(currentGame['isMatchTiebreak']) : false;
                 // Parciais dos sets (ex: 6(40)/4(10))
                 const setsPartials: string[] = [];
                 if (Array.isArray(ms.completedSets)) {
-                  ms.completedSets.forEach((set: any) => {
-                    // Se teve tiebreak, mostra games (tb)
-                    if (set.tiebreakScore) {
-                      setsPartials.push(`${set.games.PLAYER_1}(${set.tiebreakScore.PLAYER_1})/${set.games.PLAYER_2}(${set.tiebreakScore.PLAYER_2})`);
-                    } else {
-                      setsPartials.push(`${set.games.PLAYER_1}/${set.games.PLAYER_2}`);
+                  ms.completedSets.forEach((set) => {
+                    if (set && typeof set === 'object') {
+                      const s = set as Record<string, unknown>;
+                      const games = s['games'] as Record<string, number> | undefined;
+                      const tbs = s['tiebreakScore'] as Record<string, number> | undefined;
+                      const g1 = games?.PLAYER_1 ?? 0;
+                      const g2 = games?.PLAYER_2 ?? 0;
+                      if (tbs) {
+                        const tb1 = tbs.PLAYER_1 ?? 0;
+                        const tb2 = tbs.PLAYER_2 ?? 0;
+                        setsPartials.push(`${g1}(${tb1})/${g2}(${tb2})`);
+                      } else {
+                        setsPartials.push(`${g1}/${g2}`);
+                      }
                     }
                   });
                 }
                 // Parcial do set atual (em andamento)
-                if (ms.currentSetState) {
-                  const g1 = ms.currentSetState.games?.PLAYER_1 ?? 0;
-                  const g2 = ms.currentSetState.games?.PLAYER_2 ?? 0;
-                  const p1 = ms.currentGame?.points?.PLAYER_1 ?? 0;
-                  const p2 = ms.currentGame?.points?.PLAYER_2 ?? 0;
+                const currentSetState = (ms.currentSetState && typeof ms.currentSetState === 'object') ? ms.currentSetState as Record<string, unknown> : null;
+                const currentSetGames = currentSetState ? currentSetState['games'] as Record<string, number> | undefined : undefined;
+                const currentGameObj = currentGame as Record<string, unknown> | null;
+                const pointsObj = currentGameObj ? currentGameObj['points'] as Record<string, string> | undefined : undefined;
+                if (currentSetState) {
+                  const g1 = currentSetGames?.PLAYER_1 ?? 0;
+                  const g2 = currentSetGames?.PLAYER_2 ?? 0;
+                  const pointsObj = currentGameObj ? currentGameObj['points'] as Record<string, string> | undefined : undefined;
+                  const p1 = pointsObj?.PLAYER_1 ?? '0';
+                  const p2 = pointsObj?.PLAYER_2 ?? '0';
                   if (isTiebreak) {
                     setsPartials.push(`${g1}(${p1})/${g2}(${p2}) TB`);
                   } else {
@@ -170,25 +183,85 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch,
                   }
                 }
                 return (
-                  <div className="status-line live-status dashboard-live-status">
+                  <div className="status-line live-status dashboard-live-status" data-testid={`live-status-${match.id}`}>
                     <div className="live-status-content">
-                      <span className="status-label">AO VIVO</span>
+                      <span className="status-label" data-testid={`live-status-label-${match.id}`}>AO VIVO</span>
                       {isTiebreak && (
-                        <span className="tiebreak-indicator-dashboard">
+                        <span className="tiebreak-indicator-dashboard" data-testid={`live-status-tiebreak-${match.id}`}>
                           {isMatchTiebreak ? 'MATCH TIEBREAK' : 'TIEBREAK'}
                         </span>
                       )}
-                      <span className="live-status-item">Sets: <b>{ms.sets?.PLAYER_1 ?? 0}-{ms.sets?.PLAYER_2 ?? 0}</b></span>
-                      <span className="live-status-item">Games: <b>{ms.currentSetState?.games?.PLAYER_1 ?? 0}-{ms.currentSetState?.games?.PLAYER_2 ?? 0}</b></span>
-                      <span className="live-status-item">Pontos: <b>{ms.currentGame?.points?.PLAYER_1 ?? 0}-{ms.currentGame?.points?.PLAYER_2 ?? 0}</b></span>
+                      {(() => {
+                        const setsObj = (ms.sets && typeof ms.sets === 'object') ? ms.sets as Record<string, number> : undefined;
+                        const s1 = setsObj?.PLAYER_1 ?? 0;
+                        const s2 = setsObj?.PLAYER_2 ?? 0;
+                        const gamesTextLeft = currentSetGames?.PLAYER_1 ?? 0;
+                        const gamesTextRight = currentSetGames?.PLAYER_2 ?? 0;
+                        const pointsLeft = pointsObj?.PLAYER_1 ?? '0';
+                        const pointsRight = pointsObj?.PLAYER_2 ?? '0';
+                        return (
+                          <>
+                            <span className="live-status-item" data-testid={`live-status-sets-${match.id}`}>Sets: <b>{s1}-{s2}</b></span>
+                            <span className="live-status-item" data-testid={`live-status-games-${match.id}`}>Games: <b>{gamesTextLeft}-{gamesTextRight}</b></span>
+                            <span className="live-status-item" data-testid={`live-status-points-${match.id}`}>Pontos: <b>{pointsLeft}-{pointsRight}</b></span>
+                          </>
+                        );
+                      })()}
                       {setsPartials.length > 0 && (
-                        <span className="live-status-item sets-partials">Parciais: {setsPartials.join(' | ')}</span>
+                        <span className="live-status-item sets-partials" data-testid={`live-status-partials-${match.id}`}>Parciais: {setsPartials.join(' | ')}</span>
                       )}
                     </div>
                   </div>
                 );
               })()}
-              <div className="match-card-score">{match.score || ''}</div>
+              <div className="match-card-score" data-testid={`match-card-score-${match.id}`}>{match.score || ''}</div>
+              {/* Parciais detalhadas (exibe quando houver completedSets, em qualquer status) */}
+              {(() => {
+                const possibleState2 = (match as unknown) as { completedSets?: unknown; matchState?: unknown };
+                // normalizedCompleted: try match.completedSets, then match.matchState.completedSets
+                let normalized: Array<unknown> | undefined = undefined;
+                if (Array.isArray(possibleState2.completedSets)) {
+                  normalized = possibleState2.completedSets as Array<unknown>;
+                } else if (typeof possibleState2.completedSets === 'string') {
+                  try { normalized = JSON.parse(possibleState2.completedSets as string) as Array<unknown>; } catch { normalized = undefined; }
+                }
+
+                if ((!normalized || normalized.length === 0) && possibleState2.matchState && typeof possibleState2.matchState === 'object') {
+                  const ms = possibleState2.matchState as Record<string, unknown>;
+                  if (Array.isArray(ms['completedSets'])) normalized = ms['completedSets'] as Array<unknown>;
+                  else if (typeof ms['completedSets'] === 'string') {
+                    try { normalized = JSON.parse(ms['completedSets'] as string) as Array<unknown>; } catch { /* ignore */ }
+                  }
+                }
+
+                // if still empty, nothing to render
+                if (!normalized || normalized.length === 0) return null;
+
+                const parts: string[] = [];
+                normalized.forEach((set) => {
+                  if (set && typeof set === 'object') {
+                    const s = set as Record<string, unknown>;
+                    const games = s['games'] as Record<string, number> | undefined;
+                    const tbs = s['tiebreakScore'] as Record<string, number> | undefined;
+                    const g1 = games?.PLAYER_1 ?? 0;
+                    const g2 = games?.PLAYER_2 ?? 0;
+                    if (tbs) {
+                      const tb1 = tbs.PLAYER_1 ?? 0;
+                      const tb2 = tbs.PLAYER_2 ?? 0;
+                      parts.push(`${g1}(${tb1})/${g2}(${tb2})`);
+                    } else {
+                      parts.push(`${g1}/${g2}`);
+                    }
+                  }
+                });
+
+                if (parts.length === 0) return null;
+                return (
+                  <div className="match-card-partials" data-testid={`match-card-partials-${match.id}`}>
+                    Parciais: {parts.join(' • ')}
+                  </div>
+                );
+              })()}
               {/* status is shown in the meta row */}
               <div className="match-card-footer">
                 {match.nickname ? <div className="match-card-nickname-footer">{match.nickname}</div> : null}

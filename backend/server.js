@@ -3,7 +3,7 @@ import cors from "cors";
 import { PrismaClient } from "@prisma/client";
 
 const app = express();
-const PORT = 4001; // Mudando temporariamente para 4001
+const PORT = process.env.PORT ? Number(process.env.PORT) : 4001; // permite override via env.PORT
 
 // Middlewares
 app.use(cors());
@@ -306,7 +306,12 @@ app.patch("/matches/:id/state", async (req, res) => {
       return res.status(404).json({ error: "Partida não encontrada" });
     }
 
-    // Atualizar estado no banco
+    // Garantir startedAt — se estiver ausente, definir para agora
+    if (!matchState.startedAt) {
+      matchState.startedAt = new Date().toISOString();
+    }
+
+    // Atualizar estado no banco (persistir startedAt se precisou ser criado)
     const updatedMatch = await prisma.match.update({
       where: { id },
       data: {
@@ -356,6 +361,20 @@ app.get("/matches/:id/state", async (req, res) => {
     }
 
     // Retornar dados da partida + estado se existir
+    let responseMatchState = match.matchState
+      ? JSON.parse(match.matchState)
+      : null;
+    // Se não houver startedAt e status indica IN_PROGRESS, derivar de createdAt (sem persistir)
+    if (
+      responseMatchState &&
+      !responseMatchState.startedAt &&
+      responseMatchState.status === "IN_PROGRESS"
+    ) {
+      responseMatchState.startedAt = match.createdAt
+        ? match.createdAt.toISOString()
+        : new Date().toISOString();
+    }
+
     const response = {
       id: match.id,
       sportType: match.sportType,
@@ -367,7 +386,7 @@ app.get("/matches/:id/state", async (req, res) => {
       winner: match.winner,
       completedSets: JSON.parse(match.completedSets || "[]"),
       createdAt: match.createdAt.toISOString(),
-      matchState: match.matchState ? JSON.parse(match.matchState) : null,
+      matchState: responseMatchState,
       visibleTo: (() => {
         try {
           const ms = match.matchState ? JSON.parse(match.matchState) : null;

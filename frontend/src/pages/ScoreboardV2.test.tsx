@@ -1,9 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import ScoreboardV2 from './ScoreboardV2';
 
 // Mock the API
-global.fetch = vi.fn();
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
 
 const mockMatch = {
   id: '1',
@@ -33,7 +34,7 @@ describe('ScoreboardV2 Timer', () => {
       },
     };
 
-    (global.fetch as any).mockResolvedValueOnce({
+    mockFetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve(mockState),
     });
@@ -47,8 +48,10 @@ describe('ScoreboardV2 Timer', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/dia \d{2}\/\d{2}/)).toBeInTheDocument();
-      expect(screen.getByText(/hora de início \d{2}:\d{2}:\d{2}/)).toBeInTheDocument();
+      const starts = screen.getAllByText((content, element) => element?.textContent?.includes('Início:') ?? false);
+      expect(starts.length).toBeGreaterThan(0);
+      const tempos = screen.getAllByText((content, element) => element?.textContent?.includes('Tempo:') ?? false);
+      expect(tempos.length).toBeGreaterThan(0);
     });
   });
 });

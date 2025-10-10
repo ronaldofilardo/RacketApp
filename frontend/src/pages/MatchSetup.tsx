@@ -85,12 +85,12 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onBackToDashboard, onMatchCreat
           <div className="player-inputs">
             {players && players.length > 0 ? (
               <>
-                <select value={player1} onChange={e => setPlayer1(e.target.value)}>
+                <select value={player1} onChange={e => setPlayer1(e.target.value)} data-testid="player1-input">
                   <option value="">Selecione Jogador 1</option>
                   {players.map((p: { id: string; name: string; email?: string }) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
                 <span>vs</span>
-                <select value={player2} onChange={e => setPlayer2(e.target.value)}>
+                <select value={player2} onChange={e => setPlayer2(e.target.value)} data-testid="player2-input">
                   <option value="">Selecione Jogador 2</option>
                   {players.map((p: { id: string; name: string; email?: string }) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
@@ -102,6 +102,7 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onBackToDashboard, onMatchCreat
                   placeholder="Jogador 1 (ou Dupla 1)" 
                   value={player1}
                   onChange={(e) => setPlayer1(e.target.value)}
+                  data-testid="player1-input"
                 />
                 <span>vs</span>
                 <input 
@@ -109,6 +110,7 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onBackToDashboard, onMatchCreat
                   placeholder="Jogador 2 (ou Dupla 2)" 
                   value={player2}
                   onChange={(e) => setPlayer2(e.target.value)}
+                  data-testid="player2-input"
                 />
               </>
             )}
@@ -117,7 +119,7 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onBackToDashboard, onMatchCreat
 
         <div className="form-group">
           <label>Modo de jogo</label>
-          <select id="format" name="format" value={format} onChange={(e) => setFormat(e.target.value)}>
+          <select id="format" name="format" value={format} onChange={(e) => setFormat(e.target.value)} data-testid="format-select">
             <option value="BEST_OF_3">Melhor de 3 sets com vantagem, Set tie-break em todos os sets</option>
             <option value="BEST_OF_3_MATCH_TB">Melhor de 3 sets com vantagem, Set tie-break em 6-6, Match tie-break no 3º set</option>
             <option value="BEST_OF_5">Melhor de 5 sets com vantagem, Set tie-break em todos os sets</option>

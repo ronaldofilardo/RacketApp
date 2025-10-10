@@ -7,5 +7,12 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    // Excluir testes E2E que usam Playwright (executados separadamente)
+    exclude: ['tests/e2e/**', '**/*.e2e.*'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: ['node_modules/', 'src/test/'],
+    },
   },
 });
