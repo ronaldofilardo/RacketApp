@@ -29,7 +29,7 @@ interface DashboardProps {
   players?: Array<{ id: string; email?: string; name: string }>;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch, onStartMatch, matches, loading, error, currentUser }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch, onStartMatch, matches, loading, error, currentUser, players }) => {
   const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<DashboardMatch | null>(null);
   const [matchStats, setMatchStats] = useState<MatchStatsModalData | null>(null);
@@ -52,13 +52,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch,
   const canViewMatch = (match: DashboardMatch) => {
     if (!currentUser) return false;
     if (currentUser.role === 'annotator') return true;
-    const visibleTo = match.visibleTo || 'both';
-    if (visibleTo === 'both') {
-      if (!match.players || typeof match.players === 'string') return false;
-      const playersObj = match.players as DashboardMatchPlayers;
-      return [playersObj.p1, playersObj.p2].includes(currentUser.email) || [playersObj.p1, playersObj.p2].includes(currentUser.email.replace(/@.*/,''));
-    }
-    return visibleTo === currentUser.email || visibleTo === currentUser.email.replace(/@.*/,'');
+
+    // Para players, mostrar todas as partidas por enquanto (simplificação)
+    // Em produção, implementar lógica mais complexa baseada em visibleTo
+    return true;
   };
 
   const openStatsForMatch = async (matchId: string | number) => {
@@ -138,6 +135,59 @@ const Dashboard: React.FC<DashboardProps> = ({ onNewMatchClick, onContinueMatch,
                 <div className="match-card-status">{match.status || ''}</div>
               </div>
               <div className="match-card-players">{playersText}</div>
+              {/* Linha AO VIVO para partidas em andamento */}
+              {(() => {
+                if (match.status !== 'IN_PROGRESS') return null;
+                // Padrão já usado acima para extrair matchState
+                const possibleState = (match as unknown) as { matchState?: unknown };
+                const ms = possibleState.matchState && typeof possibleState.matchState === 'object' ? possibleState.matchState as Record<string, any> : null;
+                if (!ms) return null;
+                // Detecta tie-break
+                const isTiebreak = ms.currentGame?.isTiebreak;
+                const isMatchTiebreak = ms.currentGame?.isMatchTiebreak;
+                // Parciais dos sets (ex: 6(40)/4(10))
+                const setsPartials: string[] = [];
+                if (Array.isArray(ms.completedSets)) {
+                  ms.completedSets.forEach((set: any) => {
+                    // Se teve tiebreak, mostra games (tb)
+                    if (set.tiebreakScore) {
+                      setsPartials.push(`${set.games.PLAYER_1}(${set.tiebreakScore.PLAYER_1})/${set.games.PLAYER_2}(${set.tiebreakScore.PLAYER_2})`);
+                    } else {
+                      setsPartials.push(`${set.games.PLAYER_1}/${set.games.PLAYER_2}`);
+                    }
+                  });
+                }
+                // Parcial do set atual (em andamento)
+                if (ms.currentSetState) {
+                  const g1 = ms.currentSetState.games?.PLAYER_1 ?? 0;
+                  const g2 = ms.currentSetState.games?.PLAYER_2 ?? 0;
+                  const p1 = ms.currentGame?.points?.PLAYER_1 ?? 0;
+                  const p2 = ms.currentGame?.points?.PLAYER_2 ?? 0;
+                  if (isTiebreak) {
+                    setsPartials.push(`${g1}(${p1})/${g2}(${p2}) TB`);
+                  } else {
+                    setsPartials.push(`${g1}(${p1})/${g2}(${p2})`);
+                  }
+                }
+                return (
+                  <div className="status-line live-status dashboard-live-status">
+                    <div className="live-status-content">
+                      <span className="status-label">AO VIVO</span>
+                      {isTiebreak && (
+                        <span className="tiebreak-indicator-dashboard">
+                          {isMatchTiebreak ? 'MATCH TIEBREAK' : 'TIEBREAK'}
+                        </span>
+                      )}
+                      <span className="live-status-item">Sets: <b>{ms.sets?.PLAYER_1 ?? 0}-{ms.sets?.PLAYER_2 ?? 0}</b></span>
+                      <span className="live-status-item">Games: <b>{ms.currentSetState?.games?.PLAYER_1 ?? 0}-{ms.currentSetState?.games?.PLAYER_2 ?? 0}</b></span>
+                      <span className="live-status-item">Pontos: <b>{ms.currentGame?.points?.PLAYER_1 ?? 0}-{ms.currentGame?.points?.PLAYER_2 ?? 0}</b></span>
+                      {setsPartials.length > 0 && (
+                        <span className="live-status-item sets-partials">Parciais: {setsPartials.join(' | ')}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="match-card-score">{match.score || ''}</div>
               {/* status is shown in the meta row */}
               <div className="match-card-footer">

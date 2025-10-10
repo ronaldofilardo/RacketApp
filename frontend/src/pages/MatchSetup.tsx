@@ -31,16 +31,25 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onBackToDashboard, onMatchCreat
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault(); // Impede o recarregamento da página
-    
+
     try {
       console.log('Enviando dados para a API:', { sportType: sport, format });
-      
+
+      // Converter IDs para emails se necessário
+      let visibleToValue = visibleTo;
+      if (players && visibleTo !== 'both') {
+        const selectedPlayer = players.find(p => p.id === visibleTo);
+        if (selectedPlayer) {
+          visibleToValue = selectedPlayer.email || visibleTo;
+        }
+      }
+
       const response = await axios.post(`${API_URL}/matches`, {
         sportType: sport,
         format: format,
         nickname: nickname || null,
         players: { p1: player1 || 'Jogador 1', p2: player2 || 'Jogador 2' },
-        visibleTo: visibleTo || 'both',
+        visibleTo: visibleToValue || 'both',
       });
 
       console.log('Partida criada com sucesso!', response.data);

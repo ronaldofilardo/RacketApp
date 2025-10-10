@@ -327,6 +327,24 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
         <button onClick={onEndMatch} className="end-match-button">✕</button>
       </div>
 
+      {/* Linha de status ao vivo ou resultado final */}
+      {matchState.isFinished ? (
+        <div className="status-line finished-status">
+          <span className="status-label">RESULTADO FINAL:</span>
+          <span style={{ fontWeight: 700, marginLeft: 8, marginRight: 8 }}>
+            {matchState.winner === 'PLAYER_1' ? players.p1 : players.p2} VENCEU!
+          </span>
+          <span>{matchState.sets.PLAYER_1} sets x {matchState.sets.PLAYER_2} sets</span>
+        </div>
+      ) : (
+        <div className="status-line live-status">
+          <span className="status-label">AO VIVO:</span>
+          <span>Sets: {matchState.sets.PLAYER_1}-{matchState.sets.PLAYER_2} | </span>
+          <span>Games: {matchState.currentSetState.games.PLAYER_1}-{matchState.currentSetState.games.PLAYER_2} | </span>
+          <span>Pontos: {renderCurrentScore('PLAYER_1')}-{renderCurrentScore('PLAYER_2')}</span>
+        </div>
+      )}
+
       {/* Área principal de pontuação */}
       <div className="score-main">
         {/* Jogador 1 */}

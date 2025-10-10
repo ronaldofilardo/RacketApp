@@ -64,6 +64,29 @@ const Scoreboard: React.FC<ScoreboardProps> = ({ match, onEndMatch, onMatchFinis
         </div>
       </div>
 
+      <div className={`match-status ${matchState.isFinished ? 'finished' : 'in-progress'}`}>
+        {matchState.isFinished ? (
+          <div className="final-result">
+            <span className="status-label">RESULTADO FINAL:</span>
+            <span className="winner-highlight">
+              {matchState.winner === 'PLAYER_1' ? (match.players?.p1 || 'Jogador A') : (match.players?.p2 || 'Jogador B')} VENCEU!
+            </span>
+            <span className="final-score">
+              {matchState.sets.PLAYER_1} sets x {matchState.sets.PLAYER_2} sets
+            </span>
+          </div>
+        ) : (
+          <div className="live-status">
+            <span className="status-label">AO VIVO:</span>
+            <span className="status-detail">
+              Sets: {matchState.sets.PLAYER_1}-{matchState.sets.PLAYER_2} |
+              Games: {matchState.currentSetState.games.PLAYER_1}-{matchState.currentSetState.games.PLAYER_2} |
+              Pontos: {matchState.currentGame.points.PLAYER_1}-{matchState.currentGame.points.PLAYER_2}
+            </span>
+          </div>
+        )}
+      </div>
+
       <div className="point-controls">
         <button className="point-button" onClick={() => handleAddPoint('PLAYER_1')} disabled={matchState.isFinished}>
           + Ponto {match.players?.p1 || 'Jogador A'}

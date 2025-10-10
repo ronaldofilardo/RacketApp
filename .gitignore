@@ -139,3 +139,4 @@ DEPLOY*.md
 DEPLOY*
 backend/prisma/migration_lock_sqlite.toml
 backend/prisma/migrations_sqlite_backup/
+.vercel
