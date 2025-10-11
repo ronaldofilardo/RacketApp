@@ -433,16 +433,16 @@ export class TennisScoring {
   // Lógica específica de troca no tie-break (a cada 2 pontos)
   private handleTiebreakServerChange(): void {
     this.tiebreakPointsPlayed++;
-    
+
     // Regra oficial do tie-break (Regra 5b):
     // 1º ponto: sacador original
     // 2º e 3º pontos: oponente saca
     // 4º e 5º pontos: sacador original
     // 6º e 7º pontos: oponente saca
     // E assim por diante, alternando a cada 2 pontos após o primeiro
-    
-    // Padrão: pontos 2, 4, 6, 8... = troca de servidor
-    if (this.tiebreakPointsPlayed % 2 === 0) {
+
+    // Troca após pontos ímpares: 1, 3, 5, 7... = troca de servidor
+    if (this.tiebreakPointsPlayed % 2 === 1) {
       this.changeServer();
     }
   }
