@@ -273,13 +273,16 @@ export class TennisScoring {
 
   private startTiebreak() {
     this.tiebreakPointsPlayed = 0; // Reset contador para novo tie-break
-    
+
+    // O jogador que sacaria o próximo game inicia o tie-break
+    this.changeServer();
+
     this.state.currentGame = {
       points: { PLAYER_1: 0, PLAYER_2: 0 },
       server: this.state.server,
       isTiebreak: true,
     };
-    
+
     console.log('🏆 Iniciando tie-break - Servidor inicial:', this.state.server);
   }
 
