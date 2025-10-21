@@ -2,9 +2,17 @@ import React, { useState } from 'react';
 import './ScoreboardV2.css';
 import { TennisScoring } from '../core/scoring/TennisScoring';
 import { TennisConfigFactory } from '../core/scoring/TennisConfigFactory';
-import type { MatchState, TennisFormat, Player, PointDetails } from '../core/scoring/types';
+import type { 
+  MatchState, 
+  TennisFormat, 
+  Player, 
+  PointDetails,
+  PointResultType,
+  ShotType 
+} from '../core/scoring/types';
 import { API_URL } from '../config/api';
 import PointDetailsModal from '../components/PointDetailsModal';
+import type { MatrizItem } from '../data/matrizData';
 
 interface MatchData {
   id: string;
@@ -220,10 +228,45 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch, onMatchF
     }
   };
 
-  const handlePointDetailsConfirm = (details: PointDetails) => {
+  const handlePointDetailsConfirm = (matrizItem: MatrizItem) => {
     if (!pendingPointWinner) return;
     
-    addPointToMatch(pendingPointWinner, details);
+    // Função helper para mapear resultado para PointResultType
+    const mapResultToType = (resultado: string): PointResultType => {
+      if (resultado === 'Winner') return 'WINNER';
+      if (resultado === 'Erro não forçado - ENF') return 'UNFORCED_ERROR';
+      return 'FORCED_ERROR'; // Erro forçado - EF
+    };
+
+    // Função helper para mapear golpe para ShotType
+    const mapGolpeToShotType = (golpe: string): ShotType => {
+      const map: Record<string, ShotType> = {
+        'Saque': 'FOREHAND', // TODO: ajustar mapeamento correto
+        'Forehand': 'FOREHAND',
+        'Backhand': 'BACKHAND',
+        'Voleio': 'VOLLEY',
+        'Smash': 'SMASH',
+        'Slice': 'SLICE',
+        'Drop Shot': 'DROP_SHOT',
+        'Lob': 'LOB',
+        'Passing Shot': 'PASSING_SHOT'
+      };
+      return map[golpe] || 'FOREHAND';
+    };
+
+    const pointDetails: PointDetails = {
+      result: {
+        winner: pendingPointWinner,
+        type: mapResultToType(matrizItem.Resultado),
+        finalShot: mapGolpeToShotType(matrizItem.Golpe)
+      },
+      rally: {
+        ballExchanges: 1 // TODO: implementar contagem de trocas
+      },
+      timestamp: Date.now()
+    };
+    
+    addPointToMatch(pendingPointWinner, pointDetails);
     setIsPointDetailsOpen(false);
     setPendingPointWinner(null);
   };

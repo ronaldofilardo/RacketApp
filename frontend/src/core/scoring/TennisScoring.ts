@@ -195,7 +195,7 @@ export class TennisScoring {
     const currentPoints = this.state.currentGame.points[player] as number;
     const opponent: Player = player === 'PLAYER_1' ? 'PLAYER_2' : 'PLAYER_1';
     const opponentPoints = this.state.currentGame.points[opponent] as number;
-    
+
     this.state.currentGame.points[player] = currentPoints + 1;
     const newPoints = currentPoints + 1;
 
@@ -204,11 +204,10 @@ export class TennisScoring {
 
     // Verifica se ganhou o tiebreak
     const minPoints = this.state.currentGame.isMatchTiebreak ? this.config.tiebreakPoints : 7;
-    
+
     if (newPoints >= minPoints && newPoints - opponentPoints >= 2) {
       // Resetar contador do tie-break ao finalizar
       this.tiebreakPointsPlayed = 0;
-      
       if (this.state.currentGame.isMatchTiebreak) {
         // Match tiebreak decide a partida
         this.winMatch(player);
@@ -217,7 +216,6 @@ export class TennisScoring {
         this.winSet(player);
       }
     }
-
     return this.getState();
   }
 
@@ -275,7 +273,7 @@ export class TennisScoring {
     this.tiebreakPointsPlayed = 0; // Reset contador para novo tie-break
 
     // O jogador que sacaria o próximo game inicia o tie-break
-    this.changeServer();
+    // (não troca, pois já está no servidor correto)
 
     this.state.currentGame = {
       points: { PLAYER_1: 0, PLAYER_2: 0 },
@@ -290,6 +288,7 @@ export class TennisScoring {
     // Capturar resultado do tie-break se aplicável ANTES de alterar qualquer coisa
     let tiebreakScore: {PLAYER_1: number, PLAYER_2: number} | undefined = undefined;
     if (this.state.currentGame.isTiebreak && !this.state.currentGame.isMatchTiebreak) {
+      // O placar do tie-break deve refletir os pontos de cada jogador
       tiebreakScore = {
         PLAYER_1: this.state.currentGame.points.PLAYER_1 as number,
         PLAYER_2: this.state.currentGame.points.PLAYER_2 as number
@@ -444,6 +443,8 @@ export class TennisScoring {
     // Troca após pontos ímpares: 1, 3, 5, 7... = troca de servidor
     if (this.tiebreakPointsPlayed % 2 === 1) {
       this.changeServer();
+      // Atualiza o servidor do game atual
+      this.state.currentGame.server = this.state.server;
     }
   }
 

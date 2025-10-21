@@ -1,11 +1,20 @@
 import React, { useState } from 'react';
-import type { PointDetails, ServeType, PointResultType, ShotType, Player } from '../core/scoring/types';
+import type { Player } from '../core/scoring/types';
 import './PointDetailsModal.css';
+import {
+  getResultados,
+  getGolpes,
+  getEfeitos,
+  getDirecoes,
+  getRespostaAdv,
+  getMatrizItem
+} from '../core/scoring/matrizUtils';
+import type { MatrizItem } from '../data/matrizData';
 
 interface PointDetailsModalProps {
   isOpen: boolean;
   winner: Player;
-  onConfirm: (details: PointDetails) => void;
+  onConfirm: (details: MatrizItem) => void;
   onCancel: () => void;
 }
 
@@ -15,39 +24,29 @@ const PointDetailsModal: React.FC<PointDetailsModalProps> = ({
   onConfirm,
   onCancel
 }) => {
-  const [serveType, setServeType] = useState<ServeType | undefined>();
-  const [isFirstServe, setIsFirstServe] = useState(true);
-  const [resultType, setResultType] = useState<PointResultType>('WINNER');
-  const [finalShot, setFinalShot] = useState<ShotType | undefined>();
-  const [ballExchanges, setBallExchanges] = useState(1);
+  // Estados para cada etapa do fluxo evolutivo
+  const [resultado, setResultado] = useState<string | undefined>();
+  const [golpe, setGolpe] = useState<string | undefined>();
+  const [efeito, setEfeito] = useState<string | undefined>();
+  const [direcao, setDirecao] = useState<string | undefined>();
+  const [respostaAdv, setRespostaAdv] = useState<string | undefined>();
 
-  const handleConfirm = () => {
-    const details: PointDetails = {
-      serve: serveType ? {
-        type: serveType,
-        isFirstServe: isFirstServe
-      } : undefined,
-      result: {
-        winner: winner,
-        type: resultType,
-        finalShot: finalShot
-      },
-      rally: {
-        ballExchanges: ballExchanges
-      },
-      timestamp: Date.now()
-    };
-
-    onConfirm(details);
-    resetForm();
+  // Limpar tudo ao cancelar ou confirmar
+  const resetForm = () => {
+    setResultado(undefined);
+    setGolpe(undefined);
+    setEfeito(undefined);
+    setDirecao(undefined);
+    setRespostaAdv(undefined);
   };
 
-  const resetForm = () => {
-    setServeType(undefined);
-    setIsFirstServe(true);
-    setResultType('WINNER');
-    setFinalShot(undefined);
-    setBallExchanges(1);
+  const handleConfirm = () => {
+    if (!resultado || !golpe || !efeito || !direcao) return;
+    const item = getMatrizItem(resultado, golpe, efeito, direcao, respostaAdv);
+    if (item) {
+      onConfirm(item);
+      resetForm();
+    }
   };
 
   const handleCancel = () => {
@@ -68,168 +67,118 @@ const PointDetailsModal: React.FC<PointDetailsModalProps> = ({
         </div>
 
         <div className="modal-content">
-          {/* Seção do Saque */}
+          {/* Etapa 1: Resultado */}
           <div className="section">
-            <h4>🏓 Saque</h4>
+            <h4>Resultado</h4>
             <div className="button-group">
-              <button 
-                className={serveType === 'ACE' ? 'active' : ''}
-                onClick={() => setServeType('ACE')}
-              >
-                Ace
-              </button>
-              <button 
-                className={serveType === 'SERVICE_WINNER' ? 'active' : ''}
-                onClick={() => setServeType('SERVICE_WINNER')}
-              >
-                Saque Ganhador
-              </button>
-              <button 
-                className={serveType === 'FAULT_FIRST' ? 'active' : ''}
-                onClick={() => setServeType('FAULT_FIRST')}
-              >
-                Falta (1º)
-              </button>
-              <button 
-                className={serveType === 'DOUBLE_FAULT' ? 'active' : ''}
-                onClick={() => setServeType('DOUBLE_FAULT')}
-              >
-                Dupla Falta
-              </button>
-            </div>
-
-            {serveType && serveType !== 'ACE' && serveType !== 'DOUBLE_FAULT' && (
-              <div className="serve-number">
-                <label>
-                  <input 
-                    type="radio" 
-                    checked={isFirstServe}
-                    onChange={() => setIsFirstServe(true)}
-                  />
-                  1º Saque
-                </label>
-                <label>
-                  <input 
-                    type="radio" 
-                    checked={!isFirstServe}
-                    onChange={() => setIsFirstServe(false)}
-                  />
-                  2º Saque
-                </label>
-              </div>
-            )}
-          </div>
-
-          {/* Seção do Resultado */}
-          <div className="section">
-            <h4>🎯 Resultado do Ponto</h4>
-            <div className="button-group">
-              <button 
-                className={resultType === 'WINNER' ? 'active' : ''}
-                onClick={() => setResultType('WINNER')}
-              >
-                Winner
-              </button>
-              <button 
-                className={resultType === 'UNFORCED_ERROR' ? 'active' : ''}
-                onClick={() => setResultType('UNFORCED_ERROR')}
-              >
-                Erro Não Forçado
-              </button>
-              <button 
-                className={resultType === 'FORCED_ERROR' ? 'active' : ''}
-                onClick={() => setResultType('FORCED_ERROR')}
-              >
-                Erro Forçado
-              </button>
+              {getResultados().map((r) => (
+                <button
+                  key={r}
+                  className={resultado === r ? 'active' : ''}
+                  onClick={() => {
+                    setResultado(r);
+                    setGolpe(undefined);
+                    setEfeito(undefined);
+                    setDirecao(undefined);
+                    setRespostaAdv(undefined);
+                  }}
+                >
+                  {r}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Seção do Golpe Final */}
-          {resultType === 'WINNER' && (
+          {/* Etapa 2: Golpe */}
+          {resultado && (
             <div className="section">
-              <h4>🏸 Golpe Final</h4>
+              <h4>Golpe</h4>
               <div className="button-group">
-                <button 
-                  className={finalShot === 'FOREHAND' ? 'active' : ''}
-                  onClick={() => setFinalShot('FOREHAND')}
-                >
-                  Forehand
-                </button>
-                <button 
-                  className={finalShot === 'BACKHAND' ? 'active' : ''}
-                  onClick={() => setFinalShot('BACKHAND')}
-                >
-                  Backhand
-                </button>
-                <button 
-                  className={finalShot === 'VOLLEY' ? 'active' : ''}
-                  onClick={() => setFinalShot('VOLLEY')}
-                >
-                  Voleio
-                </button>
-                <button 
-                  className={finalShot === 'SMASH' ? 'active' : ''}
-                  onClick={() => setFinalShot('SMASH')}
-                >
-                  Smash
-                </button>
-                <button 
-                  className={finalShot === 'SLICE' ? 'active' : ''}
-                  onClick={() => setFinalShot('SLICE')}
-                >
-                  Slice
-                </button>
-                <button 
-                  className={finalShot === 'DROP_SHOT' ? 'active' : ''}
-                  onClick={() => setFinalShot('DROP_SHOT')}
-                >
-                  Drop Shot
-                </button>
-                <button 
-                  className={finalShot === 'LOB' ? 'active' : ''}
-                  onClick={() => setFinalShot('LOB')}
-                >
-                  Lob
-                </button>
-                <button 
-                  className={finalShot === 'PASSING_SHOT' ? 'active' : ''}
-                  onClick={() => setFinalShot('PASSING_SHOT')}
-                >
-                  Passada
-                </button>
+                {getGolpes([resultado]).map((g) => (
+                  <button
+                    key={g}
+                    className={golpe === g ? 'active' : ''}
+                    onClick={() => {
+                      setGolpe(g);
+                      setEfeito(undefined);
+                      setDirecao(undefined);
+                      setRespostaAdv(undefined);
+                    }}
+                  >
+                    {g}
+                  </button>
+                ))}
               </div>
             </div>
           )}
 
-          {/* Seção do Rally */}
-          <div className="section">
-            <h4>⚡ Duração do Rally</h4>
-            <div className="rally-counter">
-              <label>Número de trocas de bola:</label>
-              <div className="counter-controls">
-                <button 
-                  onClick={() => setBallExchanges(Math.max(1, ballExchanges - 1))}
-                  disabled={ballExchanges <= 1}
-                >
-                  -
-                </button>
-                <span className="counter-value">{ballExchanges}</span>
-                <button 
-                  onClick={() => setBallExchanges(ballExchanges + 1)}
-                >
-                  +
-                </button>
+          {/* Etapa 3: Efeito */}
+          {resultado && golpe && (
+            <div className="section">
+              <h4>Efeito</h4>
+              <div className="button-group">
+                {getEfeitos([resultado], [golpe]).map((e) => (
+                  <button
+                    key={e}
+                    className={efeito === e ? 'active' : ''}
+                    onClick={() => {
+                      setEfeito(e);
+                      setDirecao(undefined);
+                      setRespostaAdv(undefined);
+                    }}
+                  >
+                    {e}
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Etapa 4: Direção */}
+          {resultado && golpe && efeito && (
+            <div className="section">
+              <h4>Direção</h4>
+              <div className="button-group">
+                {getDirecoes([resultado], [golpe], [efeito]).map((d) => (
+                  <button
+                    key={d}
+                    className={direcao === d ? 'active' : ''}
+                    onClick={() => {
+                      setDirecao(d);
+                      setRespostaAdv(undefined);
+                    }}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Etapa 5: Resposta Adv (opcional) */}
+          {resultado && golpe && efeito && direcao && getRespostaAdv([resultado], [golpe], [efeito], [direcao]).length > 0 && (
+            <div className="section">
+              <h4>Resposta Adv</h4>
+              <div className="button-group">
+                {getRespostaAdv([resultado], [golpe], [efeito], [direcao]).map((rAdv) => (
+                  <button
+                    key={rAdv}
+                    className={respostaAdv === rAdv ? 'active' : ''}
+                    onClick={() => setRespostaAdv(rAdv)}
+                  >
+                    {rAdv}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="modal-actions">
           <button className="cancel-btn" onClick={handleCancel}>
             Cancelar
           </button>
-          <button className="confirm-btn" onClick={handleConfirm}>
+          <button className="confirm-btn" onClick={handleConfirm} disabled={!resultado || !golpe || !efeito || !direcao}>
             Confirmar Ponto
           </button>
         </div>
