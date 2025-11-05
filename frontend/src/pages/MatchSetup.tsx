@@ -28,6 +28,7 @@ const MatchSetup: React.FC<MatchSetupProps> = ({ onBackToDashboard, onMatchCreat
   const [player1, setPlayer1] = useState('');
   const [player2, setPlayer2] = useState('');
   const [visibleTo, setVisibleTo] = useState<'both' | string>('both');
+  const [initialServer, setInitialServer] = useState<'PLAYER_1' | 'PLAYER_2'>('PLAYER_1');
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault(); // Impede o recarregamento da página

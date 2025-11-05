@@ -265,6 +265,7 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch }) => {
         body: JSON.stringify({ startedAt: now, matchState: initialState })
       });
     }
+    setIsSetupOpen(false); // Fecha o modal após escolher o sacador
   };
 
   // Função para formatar histórico de sets
