@@ -266,7 +266,7 @@ function App() {
           return null;
         }
         return useV2Scoreboard ? 
-          <ScoreboardV2 match={activeMatch} onEndMatch={navigateToDashboard} onMatchFinished={finishMatch} /> :
+          <ScoreboardV2 match={activeMatch} onEndMatch={navigateToDashboard} /> :
           <Scoreboard match={activeMatch} onEndMatch={navigateToDashboard} onMatchFinished={finishMatch} />;
       case 'DASHBOARD':
       default:
@@ -306,7 +306,7 @@ function App() {
               </div>
               <div style={{ marginBottom: 12 }}>
                 <label>Senha</label>
-                <input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} style={{ width: '100%' }} />
+                <input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} style={{ width: '100%' }} autoComplete="current-password" />
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <button type="submit">Entrar</button>
