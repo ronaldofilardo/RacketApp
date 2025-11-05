@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import LoadingIndicator from '../components/LoadingIndicator';
 import './ScoreboardV2.css';
 import { TennisScoring } from '../core/scoring/TennisScoring';
 import { TennisConfigFactory } from '../core/scoring/TennisConfigFactory';
@@ -70,9 +71,27 @@ const SetupModal: React.FC<SetupModalProps> = ({ isOpen, players, format, onConf
   );
 };
 
+
 const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch }) => {
-  // Handlers placeholders para evitar erro de compilação
-  // Adiciona ponto ao placar (simples ou detalhado)
+  // TODOS os hooks no topo, SEM retorno antes!
+  const [isSetupOpen, setIsSetupOpen] = useState(true);
+  const [scoringSystem, setScoringSystem] = useState<TennisScoring | null>(null);
+  const [matchState, setMatchState] = useState<MatchState | null>(null);
+  const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [endedAt, setEndedAt] = useState<string | null>(null);
+  const [elapsed, setElapsed] = useState<number>(0);
+  const [detailedModeEnabled, setDetailedModeEnabled] = useState(false);
+  const [isPointDetailsOpen, setIsPointDetailsOpen] = useState(false);
+  const [pendingPointWinner, setPendingPointWinner] = useState<Player | null>(null);
+  const [serveStep, setServeStep] = useState<'none' | 'first' | 'second'>('none');
+  const [servePlayer, setServePlayer] = useState<Player | null>(null);
+  const [isLoading, setIsLoading] = useState(!(match && match.id));
+
+  useEffect(() => {
+    setIsLoading(!(match && match.id));
+  }, [match]);
+
+  // Funções SEMPRE depois dos hooks
   const addPointToMatch = async (player: Player, details?: any) => {
     if (!scoringSystem || !matchState) return;
     try {
@@ -83,7 +102,6 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch }) => {
     }
   };
 
-  // Marca ponto simples, independente do modo detalhado
   async function handleAddPoint(player: Player) {
     await addPointToMatch(player);
     setServeStep('none');
@@ -98,23 +116,19 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch }) => {
       console.error('Erro ao desfazer ponto:', e);
     }
   }
-  // Marca ponto automático (para Ace ou dupla falta)
   async function handleAutoPoint(player: Player) {
     await addPointToMatch(player);
     setServeStep('none');
     setServePlayer(null);
   }
 
-  // Recebe o MatrizItem do modal e converte para PointDetails
   function handlePointDetailsConfirm(matrizItem: any) {
     if (!pendingPointWinner) return;
-    // Mapear resultado para tipo
     const mapResultToType = (resultado: string) => {
       if (resultado === 'Winner') return 'WINNER';
       if (resultado === 'Erro não Forçado - ENF') return 'UNFORCED_ERROR';
       return 'FORCED_ERROR';
     };
-    // Mapear golpe para tipo
     const mapGolpeToShotType = (golpe: string) => {
       const map: Record<string, string> = {
         'Forehand - FH': 'FOREHAND',
@@ -133,9 +147,7 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch }) => {
       };
       return map[golpe] || 'FOREHAND';
     };
-    // Mapear efeito
     const mapEfeito = (efeito: string) => efeito?.toUpperCase().replace(' ', '_');
-    // Mapear direção
     const mapDirecao = (direcao: string) => direcao?.toUpperCase();
     const pointDetails = {
       result: {
@@ -158,24 +170,23 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch }) => {
     setIsPointDetailsOpen(false);
     setPendingPointWinner(null);
   }
-  const [isSetupOpen, setIsSetupOpen] = useState(true);
-  const [scoringSystem, setScoringSystem] = useState<TennisScoring | null>(null);
-  const [matchState, setMatchState] = useState<MatchState | null>(null);
-  const [startedAt, setStartedAt] = useState<string | null>(null);
-  const [endedAt, setEndedAt] = useState<string | null>(null);
-  const [elapsed, setElapsed] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  // Estados para o sistema de análise detalhada
-  const [detailedModeEnabled, setDetailedModeEnabled] = useState(false);
-  const [isPointDetailsOpen, setIsPointDetailsOpen] = useState(false);
-  const [pendingPointWinner, setPendingPointWinner] = useState<Player | null>(null);
-    // Estados para fluxo de saque
-    const [serveStep, setServeStep] = useState<'none' | 'first' | 'second'>('none');
-    const [servePlayer, setServePlayer] = useState<Player | null>(null);
-  const [doubleFault, setDoubleFault] = useState(false); // TODO: usar doubleFault no fluxo de saque
 
-  const players = match.players || { p1: 'Jogador A', p2: 'Jogador B' };
+  // Render condicional DEPOIS dos hooks e funções
+  if (isLoading) {
+    return <LoadingIndicator />;
+  }
+  if (!match || !match.id) {
+    return (
+      <div data-testid="scoreboard-error" className="scoreboard-error">
+        Erro ao carregar partida
+      </div>
+    );
+  }
+
+  // Checagem defensiva para players
+  const players = (match && match.players && match.players.p1 && match.players.p2)
+    ? match.players
+    : { p1: 'Jogador A', p2: 'Jogador B' };
 
   // Carregar estado existente se partida já está em andamento
   React.useEffect(() => {
@@ -189,11 +200,13 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch }) => {
             const data = await response.json();
             
             if (data.matchState) {
-              // Criar sistema com configuração do estado salvo
-              const system = new TennisScoring('PLAYER_1', data.matchState.config.format);
+              // Checagem defensiva para config e format
+              const format = data.matchState.config && data.matchState.config.format
+                ? data.matchState.config.format
+                : 'BEST_OF_3';
+              const system = new TennisScoring('PLAYER_1', format);
               system.loadState(data.matchState);
               system.enableSync(match.id);
-              
               setScoringSystem(system);
               setMatchState(data.matchState);
               // carregar timestamps se existirem
@@ -232,7 +245,9 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch }) => {
   }, [startedAt, endedAt]);
 
   const handleSetupConfirm = (firstServer: Player) => {
-    const system = new TennisScoring(firstServer, (match.format as TennisFormat) || 'BEST_OF_3');
+    // Checagem defensiva para format
+    const format = (match && match.format) ? (match.format as TennisFormat) : 'BEST_OF_3';
+    const system = new TennisScoring(firstServer, format);
     // Habilitar sincronização automática
     system.enableSync(match.id);
     setScoringSystem(system);
@@ -243,11 +258,13 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch }) => {
     setStartedAt(now);
     setMatchState(initialState);
     // Persistir startedAt no backend
-    fetch(`${API_URL}/matches/${match.id}/state`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      // ...existing code...
-    });
+    if (match && match.id) {
+      fetch(`${API_URL}/matches/${match.id}/state`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ startedAt: now, matchState: initialState })
+      });
+    }
   };
 
   // Função para formatar histórico de sets
@@ -287,11 +304,13 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch }) => {
   }
 
   if (isSetupOpen) {
+    // Checagem defensiva para format
+    const format = (match && match.format) ? match.format : 'BEST_OF_3';
     return (
       <SetupModal
         isOpen={isSetupOpen}
         players={players}
-        format={match.format || 'BEST_OF_3'}
+        format={format}
         onConfirm={handleSetupConfirm}
         onCancel={() => onEndMatch()}
       />
@@ -301,6 +320,11 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch }) => {
   if (!matchState) return null;
 
   const setsHistory = formatSetsHistory();
+
+  // Checagem defensiva para match.format em renderização
+  const formatName = (match && match.format)
+    ? TennisConfigFactory.getFormatDetailedName(match.format as TennisFormat)
+    : TennisConfigFactory.getFormatDetailedName('BEST_OF_3');
 
   // Render principal
   return (
@@ -535,8 +559,8 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch }) => {
               {serveStep === 'second' && servePlayer === 'PLAYER_1' && (
                 <div>
                   <button className="quick-action-btn" onClick={() => { setIsPointDetailsOpen(true); setPendingPointWinner('PLAYER_1'); setDetailedModeEnabled(true); }}>2º saque</button>
-                  <button className="quick-action-btn" onClick={() => { setIsPointDetailsOpen(true); setPendingPointWinner('PLAYER_2'); setDoubleFault(true); setDetailedModeEnabled(true); }}>Out</button>
-                  <button className="quick-action-btn" onClick={() => { setIsPointDetailsOpen(true); setPendingPointWinner('PLAYER_2'); setDoubleFault(true); setDetailedModeEnabled(true); }}>Net</button>
+                  <button className="quick-action-btn" onClick={() => { setIsPointDetailsOpen(true); setPendingPointWinner('PLAYER_2'); setDetailedModeEnabled(true); }}>Out</button>
+                  <button className="quick-action-btn" onClick={() => { setIsPointDetailsOpen(true); setPendingPointWinner('PLAYER_2'); setDetailedModeEnabled(true); }}>Net</button>
                 </div>
               )}
             </div>
@@ -591,8 +615,8 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch }) => {
               {serveStep === 'second' && servePlayer === 'PLAYER_2' && (
                 <div>
                   <button className="quick-action-btn" onClick={() => { setIsPointDetailsOpen(true); setPendingPointWinner('PLAYER_2'); setDetailedModeEnabled(true); }}>2º saque</button>
-                  <button className="quick-action-btn" onClick={() => { setIsPointDetailsOpen(true); setPendingPointWinner('PLAYER_1'); setDoubleFault(true); setDetailedModeEnabled(true); }}>Out</button>
-                  <button className="quick-action-btn" onClick={() => { setIsPointDetailsOpen(true); setPendingPointWinner('PLAYER_1'); setDoubleFault(true); setDetailedModeEnabled(true); }}>Net</button>
+                  <button className="quick-action-btn" onClick={() => { setIsPointDetailsOpen(true); setPendingPointWinner('PLAYER_1'); setDetailedModeEnabled(true); }}>Out</button>
+                  <button className="quick-action-btn" onClick={() => { setIsPointDetailsOpen(true); setPendingPointWinner('PLAYER_1'); setDetailedModeEnabled(true); }}>Net</button>
                 </div>
               )}
             </div>
@@ -617,7 +641,7 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch }) => {
         <button 
           className="point-button point-button-p1"
           onClick={() => handleAddPoint('PLAYER_1')}
-          disabled={matchState ? matchState.isFinished : false}
+          disabled={Boolean(matchState?.isFinished)}
           data-testid="point-button-p1"
         >
           + Ponto {players.p1}
@@ -625,7 +649,7 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch }) => {
         <button 
           className="point-button point-button-p2"
           onClick={() => handleAddPoint('PLAYER_2')}
-          disabled={matchState ? matchState.isFinished : false}
+          disabled={Boolean(matchState?.isFinished)}
           data-testid="point-button-p2"
         >
           + Ponto {players.p2}
@@ -637,7 +661,7 @@ const ScoreboardV2: React.FC<ScoreboardV2Props> = ({ match, onEndMatch }) => {
         <button 
           className="undo-button"
           onClick={handleUndo}
-          disabled={matchState ? (matchState.isFinished || !scoringSystem?.canUndo()) : false}
+          disabled={Boolean(matchState?.isFinished) || (!!matchState && !scoringSystem?.canUndo())}
           title="Desfazer último ponto marcado"
         >
           ↩️ Correção (Undo)

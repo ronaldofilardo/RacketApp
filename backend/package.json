@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
+  "start:test": "cross-env NODE_ENV=test DATABASE_URL=file:./prisma/test.db PRISMA_SCHEMA=prisma/schema.prisma npx prisma migrate deploy --schema=prisma/schema.prisma && cross-env NODE_ENV=test DATABASE_URL=file:./prisma/test.db node scripts/seed-db.mjs && cross-env NODE_ENV=test DATABASE_URL=file:./prisma/test.db PRISMA_SCHEMA=prisma/schema.prisma node server.js",
     "build": "prisma generate && prisma db push",
     "vercel-build": "prisma generate --schema prisma/schema.postgres.prisma",
     "prisma:generate": "prisma generate",
@@ -19,5 +20,8 @@
     "node-fetch": "^3.3.2",
     "pg": "^8.16.3",
     "prisma": "^6.16.3"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0"
   }
 }

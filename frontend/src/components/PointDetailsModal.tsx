@@ -165,7 +165,7 @@ const PointDetailsModal: React.FC<PointDetailsModalProps> = ({
           <button className="cancel-btn" onClick={handleCancel}>
             Cancelar
           </button>
-          <button className="confirm-btn" onClick={handleConfirm} disabled={!resultado || !golpe || (!efeito && !shouldSkipEffect(golpe)) || !direcao}>
+          <button className="confirm-btn" onClick={handleConfirm} disabled={!resultado}>
             Confirmar Ponto
           </button>
         </div>
